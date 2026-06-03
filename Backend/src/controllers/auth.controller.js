@@ -70,7 +70,7 @@ async function getMe(req, res) {
                 role: user.role
             }
         });
-    } catch (error) {
+    }catch(error){
         res.status(500).json({ error: "Server Error" });
     }
 }
