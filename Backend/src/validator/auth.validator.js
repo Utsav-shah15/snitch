@@ -21,7 +21,7 @@ const validateRegister = Joi.object({
       "string.empty": "Email is required",
     }),
 
-  contact: Joi.string()
+  contactNumber: Joi.string()
     .pattern(/^[0-9]{10}$/)
     .required()
     .messages({
@@ -39,6 +39,8 @@ const validateRegister = Joi.object({
         "Password must contain uppercase, lowercase and a number",
       "string.empty": "Password is required",
     }),
+
+  isSeller: Joi.boolean().default(false),
 });
 
 function validateFunction(req,res,next) {

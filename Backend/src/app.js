@@ -7,13 +7,6 @@ const cors=require("cors");
 
 const authRoutes=require("./routes/auth.routes");
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(morgan("dev"));
-
-app.use("/api/auth", authRoutes);
-
 app.use(
   cors({
     origin: "http://localhost:5173",
@@ -21,4 +14,12 @@ app.use(
   })
 );
 
-module.exports=app;
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(morgan("dev"));
+
+app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
+
+module.exports=app;
