@@ -17,7 +17,7 @@ async function sendToken(user, res, message) {
             role: user.role
         }
     })
-}
+} 
 
 async function registerUser(req, res) {
     const { fullName, email, contactNumber, password, isSeller } = req.body;
