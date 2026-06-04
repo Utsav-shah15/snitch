@@ -20,12 +20,17 @@ if(!process.env.GOOGLE_CALLBACK_URL){
     throw new Error("GOOGLE_CALLBACK_URL is not defined in .env file");
 }
 
+if(!process.env.IMAGEKIT_PRIVATEKEY){
+    throw new Error("IMAGEKIT_PRIVATEKEY is not defined in .env file");
+}
+
 const config={
    MONGO_URI:process.env.MONGO_URI,
    JWT_SECRET:process.env.JWT_SECRET,
    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET ,
-   GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/auth/google/callback"
+   GOOGLE_CALLBACK_URL: process.env.GOOGLE_CALLBACK_URL || "http://localhost:3000/auth/google/callback",
+   IMAGEKIT_PRIVATEKEY:process.env.IMAGEKIT_PRIVATEKEY
 }
 
 module.exports=config;

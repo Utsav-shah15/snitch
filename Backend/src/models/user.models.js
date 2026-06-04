@@ -9,7 +9,9 @@ const userSchema=new mongoose.Schema({
     },
     password:{
         type:String,
-        required:true,
+        required:function() {
+            return !this.googleId;
+        },
         select:false,
     },
     fullName:{
@@ -18,24 +20,32 @@ const userSchema=new mongoose.Schema({
     },
     contactNumber:{
         type:String,
-        required:true,
+        required:function() {
+            return !this.googleId;
+        },
     },
     role:{
         type:String,
         enum:["seller","buyer"],
         default:"buyer",
         required:true,
+    },
+    googleId:{
+        type:String,
+        unique:true,
+        sparse:true,
     }
 })
 
 userSchema.pre("save",async function(){
-    if(!this.isModified("password")){
+    if(!this.password || !this.isModified("password")){
         return;
     } 
     this.password=await bcrypt.hash(this.password,10);
 });
 
 userSchema.methods.comparePassword=async function(password){
+        if(!this.password) return false;
         return await bcrypt.compare(password,this.password);
 }
 

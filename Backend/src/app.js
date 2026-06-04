@@ -6,6 +6,7 @@ const morgan = require("morgan");
 const cors=require("cors");
 
 const authRoutes=require("./routes/auth.routes");
+const productRoutes=require("./routes/product.routes")
 
 app.use(
   cors({
@@ -21,5 +22,6 @@ app.use(morgan("dev"));
 
 app.use("/api/auth", authRoutes);
 app.use("/auth", authRoutes);
+app.use("/api",productRoutes);
 
-module.exports=app;
+module.exports=app;

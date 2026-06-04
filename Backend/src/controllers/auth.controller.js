@@ -2,6 +2,7 @@ const User = require("../models/user.models");
 const jwt = require("jsonwebtoken");
 const config = require("../config/config");
 
+
 async function sendToken(user, res, message) {
     const token = jwt.sign({ id: user._id }, config.JWT_SECRET, { expiresIn: "7d" });
 
@@ -117,15 +118,24 @@ async function googleCallback(req, res) {
         }
 
         // Find or create user
-        let user = await User.findOne({ email: userInfo.email });
+        let user = await User.findOne({
+            $or: [
+                { googleId: userInfo.sub },
+                { email: userInfo.email }
+            ]
+        });
+
         if (!user) {
             user = await User.create({
                 fullName: userInfo.name || "Google User",
                 email: userInfo.email,
-                contactNumber: "0000000000", // placeholder since contactNumber is required in mongoose schema
-                password: Math.random().toString(36).slice(-10), // placeholder password
+                googleId: userInfo.sub,
                 role: role === "seller" ? "seller" : "buyer"
             });
+        } else if (!user.googleId) {
+            // Link googleId to existing user if they signed up with same email previously
+            user.googleId = userInfo.sub;
+            await user.save();
         }
 
         // Sign token and set cookie
