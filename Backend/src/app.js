@@ -22,6 +22,6 @@ app.use(morgan("dev"));
 
 app.use("/api/auth", authRoutes);
 app.use("/auth", authRoutes);
-app.use("/api",productRoutes);
+app.use("/api/products", productRoutes);
 
 module.exports=app;

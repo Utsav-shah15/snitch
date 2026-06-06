@@ -16,6 +16,3 @@ async function uploadFile({ buffer, filename, folder = "snitch" }) {
 }
 
 module.exports = uploadFile;
-
-
-
