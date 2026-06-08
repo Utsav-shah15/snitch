@@ -324,8 +324,6 @@ const Register = () => {
             )}
           </div>
 
-
-
           {/* Terms Agreement Checkbox */}
           <div className="pt-2">
             <div className="flex items-center gap-3">
