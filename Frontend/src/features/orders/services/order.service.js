@@ -29,3 +29,9 @@ export const getOrderById = async (id) => {
     const response = await api.get(`/${id}`);
     return response.data;
 };
+
+export const reSnitch = async (orderId, data) => {
+    const response = await api.post(`/${orderId}/resnitch`, data);
+    return response.data;
+};
+
