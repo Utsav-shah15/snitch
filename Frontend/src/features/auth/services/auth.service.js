@@ -29,3 +29,8 @@ export const BecomeSeller = async (shopName, bio) => {
     const response = await api.patch('/become-seller', { shopName, bio });
     return response.data;
 };
+
+export const SetPassword = async (password) => {
+    const response = await api.patch('/set-password', { password });
+    return response.data;
+};

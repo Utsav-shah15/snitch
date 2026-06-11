@@ -8,6 +8,7 @@ const {
     becomeSeller,
     googleAuth,
     googleCallback,
+    setPassword,
 } = require("../controllers/auth.controller");
 const { isAuthenticated } = require("../middlewares/auth.middleware");
 
@@ -18,6 +19,7 @@ router.post("/login", loginUser);
 router.get("/logout", isAuthenticated, logoutUser);
 router.get("/getMe", isAuthenticated, getMe);
 router.patch("/become-seller", isAuthenticated, becomeSeller);
+router.patch("/set-password", isAuthenticated, setPassword);
 router.get("/google", googleAuth);
 router.get("/google/callback", googleCallback);
 

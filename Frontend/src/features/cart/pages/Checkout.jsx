@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Navigate, useNavigate } from 'react-router-dom';
-import { clearCart } from '../features/cart/cartSlice';
-import { placeOrder } from '../features/orders/services/order.service';
+import { clearCart } from '../cartSlice';
+import useCheckout from '../hooks/useCheckout';
 
 const Checkout = () => {
     const { items } = useSelector((state) => state.cart);
@@ -10,62 +10,28 @@ const Checkout = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
-    const [address, setAddress] = useState({ street: '', city: '', state: '', pincode: '' });
-    const [errors, setErrors] = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [orderError, setOrderError] = useState('');
-    const [success, setSuccess] = useState(false);
+    const {
+        address,
+        errors,
+        orderError,
+        isSubmitting,
+        success,
+        handleChange,
+        placeAllOrders,
+    } = useCheckout();
 
     if (!user) return <Navigate to="/login" replace />;
     if (items.length === 0 && !success) return <Navigate to="/cart" replace />;
 
     const total = items.reduce((sum, item) => sum + (item.price?.amount || 0) * item.quantity, 0);
 
-    const handleChange = (e) => {
-        const { name, value } = e.target;
-        setAddress((prev) => ({ ...prev, [name]: value }));
-        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
-        setOrderError('');
-    };
-
-    const validate = () => {
-        const errs = {};
-        if (!address.street.trim()) errs.street = 'Street address is required';
-        if (!address.city.trim()) errs.city = 'City is required';
-        if (!address.state.trim()) errs.state = 'State is required';
-        if (!address.pincode.trim()) errs.pincode = 'Pincode is required';
-        else if (!/^\d{6}$/.test(address.pincode.trim())) errs.pincode = 'Pincode must be 6 digits';
-        setErrors(errs);
-        return Object.keys(errs).length === 0;
-    };
-
     const handlePlaceOrder = async () => {
-        if (!validate()) return;
-        setIsSubmitting(true);
-        setOrderError('');
-
         try {
-            // Place order for each cart item
-            for (const item of items) {
-                await placeOrder({
-                    productId: item._id,
-                    quantity: item.quantity,
-                    shippingAddress: {
-                        street: address.street.trim(),
-                        city: address.city.trim(),
-                        state: address.state.trim(),
-                        pincode: address.pincode.trim(),
-                    },
-                });
-            }
-
+            await placeAllOrders(items);
             dispatch(clearCart());
-            setSuccess(true);
             setTimeout(() => navigate('/orders'), 3000);
-        } catch (err) {
-            setOrderError(err.response?.data?.error || 'Failed to place order. Please try again.');
-        } finally {
-            setIsSubmitting(false);
+        } catch {
+            // error is handled by the hook
         }
     };
 

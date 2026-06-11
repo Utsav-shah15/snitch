@@ -1,5 +1,5 @@
 import { setError, setLoading, setUser, logout as logoutAction, updateSellerProfile } from '../authSlice';
-import { Register, Login, getMe as getMeApi, Logout, BecomeSeller } from '../services/auth.service';
+import { Register, Login, getMe as getMeApi, Logout, BecomeSeller, SetPassword } from '../services/auth.service';
 import { useDispatch } from 'react-redux';
 
 export const useAuth = () => {
@@ -80,5 +80,21 @@ export const useAuth = () => {
         }
     };
 
-    return { register, login, getMe, logoutUser, becomeSeller };
+    // Set password for Google Users
+    const setPassword = async (password) => {
+        try {
+            dispatch(setLoading(true));
+            const response = await SetPassword(password);
+            dispatch(setUser(response.user));
+            return response;
+        } catch (error) {
+            const message = error.response?.data?.error || error.message || 'Failed to set password';
+            dispatch(setError(message));
+            throw new Error(message);
+        } finally {
+            dispatch(setLoading(false));
+        }
+    };
+
+    return { register, login, getMe, logoutUser, becomeSeller, setPassword };
 };

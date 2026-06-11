@@ -8,6 +8,9 @@ const cors=require("cors");
 const authRoutes=require("./routes/auth.routes");
 const productRoutes=require("./routes/product.routes");
 const orderRoutes=require("./routes/order.routes");
+const walletRoutes=require("./routes/wallet.routes");
+const offerRoutes=require("./routes/offer.routes");
+const analyticsRoutes=require("./routes/analytics.routes");
 
 app.use(
   cors({
@@ -25,5 +28,9 @@ app.use("/api/auth", authRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/products", productRoutes);
 app.use("/api/orders", orderRoutes);
+app.use("/api/wallet", walletRoutes);
+app.use("/api/offers", offerRoutes);
+app.use("/api/analytics", analyticsRoutes);
 
 module.exports=app;
+

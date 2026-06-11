@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { getMyOrders } from '../features/orders/services/order.service';
+import useOrders from '../hooks/useOrders';
 
 const statusColors = {
     pending: 'bg-yellow-900/30 text-yellow-400 border-yellow-800',
@@ -13,19 +13,12 @@ const statusColors = {
 
 const Orders = () => {
     const { user } = useSelector((state) => state.auth);
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { orders, loading, fetchMyOrders } = useOrders();
 
     if (!user) return <Navigate to="/login" replace />;
 
     useEffect(() => {
-        const fetch = async () => {
-            try {
-                const data = await getMyOrders();
-                setOrders(data.orders || []);
-            } catch { /* silent */ } finally { setLoading(false); }
-        };
-        fetch();
+        fetchMyOrders();
     }, []);
 
     return (

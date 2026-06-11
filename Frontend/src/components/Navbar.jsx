@@ -92,6 +92,13 @@ const Navbar = () => {
                                                 </Link>
                                             )}
 
+                                            {!user.hasPassword && (
+                                                <Link to="/set-password" onClick={() => setMenuOpen(false)}
+                                                    className="block px-4 py-2.5 text-xs text-yellow-500 hover:text-yellow-400 hover:bg-neutral-800 transition-colors">
+                                                    🔑 Set Password
+                                                </Link>
+                                            )}
+
                                             <div className="border-t border-neutral-800 mt-1">
                                                 <button onClick={() => { handleLogout(); setMenuOpen(false); }}
                                                     className="w-full text-left px-4 py-2.5 text-xs text-red-400 hover:text-red-300 hover:bg-neutral-800 transition-colors cursor-pointer">

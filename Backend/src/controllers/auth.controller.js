@@ -11,6 +11,9 @@ async function sendToken(user, res, message, statusCode = 200) {
         maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
+    const dbUser = await User.findById(user._id).select("+password");
+    const hasPassword = !!(dbUser && dbUser.password);
+
     res.status(statusCode).json({
         message,
         user: {
@@ -21,6 +24,7 @@ async function sendToken(user, res, message, statusCode = 200) {
             isSeller: user.isSeller,
             sellerProfile: user.sellerProfile,
             wallet: user.wallet,
+            hasPassword,
         },
     });
 }
@@ -72,6 +76,9 @@ async function loginUser(req, res) {
 async function getMe(req, res) {
     try {
         const user = req.user;
+        const dbUser = await User.findById(user._id).select("+password");
+        const hasPassword = !!(dbUser && dbUser.password);
+
         res.status(200).json({
             user: {
                 id: user._id,
@@ -81,6 +88,42 @@ async function getMe(req, res) {
                 isSeller: user.isSeller,
                 sellerProfile: user.sellerProfile,
                 wallet: user.wallet,
+                hasPassword,
+            },
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Server Error" });
+    }
+}
+
+// PATCH /api/auth/set-password
+async function setPassword(req, res) {
+    try {
+        const { password } = req.body;
+
+        if (!password || password.length < 8) {
+            return res.status(400).json({ error: "Password must be at least 8 characters" });
+        }
+
+        const user = await User.findById(req.user._id).select("+password");
+        if (user.password) {
+            return res.status(400).json({ error: "Password is already set" });
+        }
+
+        user.password = password;
+        await user.save();
+
+        res.status(200).json({
+            message: "Password set successfully!",
+            user: {
+                id: user._id,
+                fullName: user.fullName,
+                email: user.email,
+                contactNumber: user.contactNumber,
+                isSeller: user.isSeller,
+                sellerProfile: user.sellerProfile,
+                wallet: user.wallet,
+                hasPassword: true,
             },
         });
     } catch (error) {
@@ -210,4 +253,5 @@ module.exports = {
     becomeSeller,
     googleAuth,
     googleCallback,
+    setPassword,
 };

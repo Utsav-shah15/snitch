@@ -3,13 +3,19 @@ import Layout from '../components/Layout';
 import Register from '../features/auth/pages/Register';
 import Login from '../features/auth/pages/Login';
 import BecomeSeller from '../features/auth/pages/BecomeSeller';
+import SetPassword from '../features/auth/pages/SetPassword';
 import Home from '../pages/Home';
-import Browse from '../pages/Browse';
-import ProductDetail from '../pages/ProductDetail';
-import Cart from '../pages/Cart';
-import Checkout from '../pages/Checkout';
-import Orders from '../pages/Orders';
-import Dashboard from '../pages/dashboard/Overview';
+import Browse from '../features/products/pages/Browse';
+import ProductDetail from '../features/products/pages/ProductDetail';
+import Cart from '../features/cart/pages/Cart';
+import Checkout from '../features/cart/pages/Checkout';
+import Orders from '../features/orders/pages/Orders';
+import Dashboard from '../features/dashboard/pages/Overview';
+import Listings from '../features/dashboard/pages/Listings';
+import DashboardOrders from '../features/dashboard/pages/Orders';
+import Wallet from '../features/dashboard/pages/Wallet';
+import Offers from '../features/dashboard/pages/Offers';
+import Analytics from '../features/dashboard/pages/Analytics';
 
 export const router = createBrowserRouter([
     {
@@ -21,10 +27,18 @@ export const router = createBrowserRouter([
             { path: '/cart', element: <Cart /> },
             { path: '/checkout', element: <Checkout /> },
             { path: '/orders', element: <Orders /> },
+            // Dashboard routes
             { path: '/dashboard', element: <Dashboard /> },
+            { path: '/dashboard/listings', element: <Listings /> },
+            { path: '/dashboard/orders', element: <DashboardOrders /> },
+            { path: '/dashboard/wallet', element: <Wallet /> },
+            { path: '/dashboard/offers', element: <Offers /> },
+            { path: '/dashboard/analytics', element: <Analytics /> },
         ],
     },
     { path: '/register', element: <Register /> },
     { path: '/login', element: <Login /> },
     { path: '/become-seller', element: <BecomeSeller /> },
+    { path: '/set-password', element: <SetPassword /> },
 ]);
+

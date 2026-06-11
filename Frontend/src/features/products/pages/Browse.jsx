@@ -1,12 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ProductCard from '../components/ProductCard';
-import { getAllProducts } from '../features/products/services/product.service';
+import useProducts from '../hooks/useProducts';
 
 const Browse = () => {
     const [searchParams, setSearchParams] = useSearchParams();
-    const [products, setProducts] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { products, loading, fetchAllProducts } = useProducts();
 
     // Filters
     const [filters, setFilters] = useState({
@@ -19,23 +18,12 @@ const Browse = () => {
         sort: searchParams.get('sort') || '',
     });
 
-    const fetchProducts = async () => {
-        setLoading(true);
-        try {
-            // Build params — skip empty values
-            const params = {};
-            Object.entries(filters).forEach(([key, val]) => {
-                if (val) params[key] = val;
-            });
-            const data = await getAllProducts(params);
-            setProducts(data.products || []);
-        } catch { /* silent */ } finally {
-            setLoading(false);
-        }
-    };
-
     useEffect(() => {
-        fetchProducts();
+        const params = {};
+        Object.entries(filters).forEach(([key, val]) => {
+            if (val) params[key] = val;
+        });
+        fetchAllProducts(params);
     }, [filters]);
 
     const handleFilter = (key, value) => {

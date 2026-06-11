@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import ProductCard from '../components/ProductCard';
+import ProductCard from '../features/products/components/ProductCard';
 import { getAllProducts } from '../features/products/services/product.service';
 
 const Home = () => {

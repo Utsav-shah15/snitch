@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
-import { getProductById } from '../features/products/services/product.service';
-import { addToCart } from '../features/cart/cartSlice';
+import useProduct from '../hooks/useProduct';
+import { addToCart } from '../../cart/cartSlice';
 
 const ProductDetail = () => {
     const { id } = useParams();
@@ -10,19 +10,12 @@ const ProductDetail = () => {
     const dispatch = useDispatch();
     const { user } = useSelector((state) => state.auth);
 
-    const [product, setProduct] = useState(null);
-    const [loading, setLoading] = useState(true);
+    const { product, loading, error, fetchProduct } = useProduct();
     const [selectedImage, setSelectedImage] = useState(0);
     const [added, setAdded] = useState(false);
 
     useEffect(() => {
-        const fetch = async () => {
-            try {
-                const data = await getProductById(id);
-                setProduct(data.product);
-            } catch { navigate('/browse'); } finally { setLoading(false); }
-        };
-        fetch();
+        fetchProduct(id).catch(() => navigate('/browse'));
     }, [id]);
 
     const handleAddToCart = () => {

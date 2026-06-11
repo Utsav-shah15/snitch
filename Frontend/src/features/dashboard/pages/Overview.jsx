@@ -1,47 +1,18 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { getMyListings } from '../../features/products/services/product.service';
-import { getSellerOrders } from '../../features/orders/services/order.service';
+import useDashboardStats from '../hooks/useDashboardStats';
 
 const Dashboard = () => {
     const { user } = useSelector((state) => state.auth);
     const navigate = useNavigate();
-
-    const [stats, setStats] = useState({ listings: 0, orders: 0, revenue: 0, pending: 0 });
-    const [recentOrders, setRecentOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const { stats, recentOrders, loading, fetchDashboardData } = useDashboardStats();
 
     if (!user) return <Navigate to="/login" replace />;
     if (!user.isSeller) return <Navigate to="/become-seller" replace />;
 
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [listingsData, ordersData] = await Promise.all([
-                    getMyListings(),
-                    getSellerOrders(),
-                ]);
-
-                const listings = listingsData.products || [];
-                const orders = ordersData.orders || [];
-
-                const revenue = orders
-                    .filter(o => o.status === 'delivered')
-                    .reduce((sum, o) => sum + o.totalPrice, 0);
-
-                const pending = orders.filter(o => o.status === 'pending').length;
-
-                setStats({
-                    listings: listings.length,
-                    orders: orders.length,
-                    revenue,
-                    pending,
-                });
-                setRecentOrders(orders.slice(0, 5));
-            } catch { /* silent */ } finally { setLoading(false); }
-        };
-        fetchData();
+        fetchDashboardData();
     }, []);
 
     const statCards = [

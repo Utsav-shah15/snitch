@@ -215,10 +215,63 @@ const getOrderById = async (req, res) => {
     }
 };
 
+// POST /api/orders/:id/resnitch — buyer re-lists a delivered item
+const reSnitch = async (req, res) => {
+    try {
+        const order = await Order.findById(req.params.id)
+            .populate("product");
+
+        if (!order) return res.status(404).json({ error: "Order not found" });
+
+        // Only buyer of this order can re-snitch
+        if (order.buyer.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: "Not authorized" });
+        }
+
+        // Can only re-snitch delivered orders
+        if (order.status !== "delivered") {
+            return res.status(400).json({ error: "You can only re-snitch delivered items" });
+        }
+
+        const { price, description } = req.body;
+        if (!price || price <= 0) {
+            return res.status(400).json({ error: "A valid resale price is required" });
+        }
+
+        const originalProduct = order.product;
+
+        // Create a new listing re-snitched from original
+        const newProduct = await Product.create({
+            title: `[Re-Snitch] ${originalProduct.title}`,
+            description: description || originalProduct.description,
+            seller: req.user._id,
+            price: { amount: price, currency: "INR" },
+            images: originalProduct.images,
+            category: originalProduct.category,
+            size: originalProduct.size,
+            condition: "Good", // Re-snitched items default to Good
+            stock: 1,
+            status: "active",
+            isReSnitched: true,
+            originalProduct: originalProduct._id,
+            originalSeller: originalProduct.seller,
+            royaltyRate: 5,
+        });
+
+        res.status(201).json({
+            message: "Item re-snitched! Your listing is now live. Original seller will earn 5% royalty on sale.",
+            product: newProduct,
+        });
+    } catch (error) {
+        res.status(500).json({ error: "Error creating re-snitch listing", details: error.message });
+    }
+};
+
 module.exports = {
     placeOrder,
     getMyOrders,
     getSellerOrders,
     updateOrderStatus,
     getOrderById,
+    reSnitch,
 };
