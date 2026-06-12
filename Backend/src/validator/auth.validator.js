@@ -1,6 +1,6 @@
 const Joi = require("joi");
 
-const validateRegister = Joi.object({
+const registerSchema = Joi.object({
   fullName: Joi.string()
     .trim()
     .min(3)
@@ -43,14 +43,40 @@ const validateRegister = Joi.object({
   isSeller: Joi.boolean().default(false),
 });
 
-function validateFunction(req,res,next) {
-    const {error}=validateRegister.validate(req.body);
-    if(error){  
-        return res.status(400).json({error:error.details[0].message});
-    }
-    next();
-}   
+const loginSchema = Joi.object({
+  email: Joi.string()
+    .email()
+    .lowercase()
+    .required()
+    .messages({
+      "string.email": "Please enter a valid email",
+      "string.empty": "Email is required",
+    }),
+
+  password: Joi.string()
+    .required()
+    .messages({
+      "string.empty": "Password is required",
+    }),
+});
+
+function validateRegister(req, res, next) {
+  const { error } = registerSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({ error: error.details[0].message });
+  }
+  next();
+}
+
+function validateLogin(req, res, next) {
+  const { error } = loginSchema.validate(req.body);
+  if (error) {
+    return res.status(400).json({ error: error.details[0].message });
+  }
+  next();
+}
 
 module.exports = {
-  validateFunction
+  validateRegister,
+  validateLogin,
 };

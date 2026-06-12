@@ -59,6 +59,22 @@ const ProductSchema = new mongoose.Schema({
         enum: ["active", "draft", "sold"],
         default: "active",
     },
+    isReSnitched: {
+        type: Boolean,
+        default: false,
+    },
+    originalProduct: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Product",
+    },
+    originalSeller: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+    },
+    royaltyRate: {
+        type: Number,
+        default: 0,
+    },
 }, { timestamps: true });
 
 const Product = mongoose.model("Product", ProductSchema);

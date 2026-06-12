@@ -1,5 +1,5 @@
 const { Router } = require("express");
-const { validateFunction } = require("../validator/auth.validator");
+const { validateRegister, validateLogin } = require("../validator/auth.validator");
 const {
     registerUser,
     loginUser,
@@ -14,8 +14,8 @@ const { isAuthenticated } = require("../middlewares/auth.middleware");
 
 const router = Router();
 
-router.post("/register", validateFunction, registerUser);
-router.post("/login", loginUser);
+router.post("/register", validateRegister, registerUser);
+router.post("/login", validateLogin, loginUser);
 router.get("/logout", isAuthenticated, logoutUser);
 router.get("/getMe", isAuthenticated, getMe);
 router.patch("/become-seller", isAuthenticated, becomeSeller);

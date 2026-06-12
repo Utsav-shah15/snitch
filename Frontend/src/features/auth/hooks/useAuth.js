@@ -1,3 +1,4 @@
+import { useCallback } from 'react';
 import { setError, setLoading, setUser, logout as logoutAction, updateSellerProfile } from '../authSlice';
 import { Register, Login, getMe as getMeApi, Logout, BecomeSeller, SetPassword } from '../services/auth.service';
 import { useDispatch } from 'react-redux';
@@ -6,7 +7,7 @@ export const useAuth = () => {
     const dispatch = useDispatch();
 
     // Register new user (buyer by default)
-    const register = async (fullName, email, password, contactNumber) => {
+    const register = useCallback(async (fullName, email, password, contactNumber) => {
         try {
             dispatch(setLoading(true));
             const response = await Register(fullName, email, password, contactNumber);
@@ -19,10 +20,10 @@ export const useAuth = () => {
         } finally {
             dispatch(setLoading(false));
         }
-    };
+    }, [dispatch]);
 
     // Login existing user
-    const login = async (email, password) => {
+    const login = useCallback(async (email, password) => {
         try {
             dispatch(setLoading(true));
             const response = await Login(email, password);
@@ -35,10 +36,10 @@ export const useAuth = () => {
         } finally {
             dispatch(setLoading(false));
         }
-    };
+    }, [dispatch]);
 
     // Check session on app load
-    const getMe = async () => {
+    const getMe = useCallback(async () => {
         try {
             dispatch(setLoading(true));
             const response = await getMeApi();
@@ -51,10 +52,10 @@ export const useAuth = () => {
         } finally {
             dispatch(setLoading(false));
         }
-    };
+    }, [dispatch]);
 
     // Logout user
-    const logoutUser = async () => {
+    const logoutUser = useCallback(async () => {
         try {
             await Logout();
         } catch (_) {
@@ -62,10 +63,10 @@ export const useAuth = () => {
         } finally {
             dispatch(logoutAction());
         }
-    };
+    }, [dispatch]);
 
     // Upgrade user to seller
-    const becomeSeller = async (shopName, bio = '') => {
+    const becomeSeller = useCallback(async (shopName, bio = '') => {
         try {
             dispatch(setLoading(true));
             const response = await BecomeSeller(shopName, bio);
@@ -78,10 +79,10 @@ export const useAuth = () => {
         } finally {
             dispatch(setLoading(false));
         }
-    };
+    }, [dispatch]);
 
     // Set password for Google Users
-    const setPassword = async (password) => {
+    const setPassword = useCallback(async (password) => {
         try {
             dispatch(setLoading(true));
             const response = await SetPassword(password);
@@ -94,7 +95,7 @@ export const useAuth = () => {
         } finally {
             dispatch(setLoading(false));
         }
-    };
+    }, [dispatch]);
 
     return { register, login, getMe, logoutUser, becomeSeller, setPassword };
 };

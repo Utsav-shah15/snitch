@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import useProduct from '../hooks/useProduct';
+import ImageGallery from '../components/ImageGallery';
 import { addToCart } from '../../cart/cartSlice';
 
 const ProductDetail = () => {
@@ -55,31 +56,11 @@ const ProductDetail = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                 {/* Images */}
-                <div>
-                    <div className="aspect-square bg-neutral-900 border border-neutral-800 overflow-hidden mb-3">
-                        {product.images?.[selectedImage]?.url ? (
-                            <img src={product.images[selectedImage].url} alt={product.title}
-                                className="w-full h-full object-cover" />
-                        ) : (
-                            <div className="w-full h-full flex items-center justify-center text-neutral-600">
-                                No Image
-                            </div>
-                        )}
-                    </div>
-                    {/* Thumbnails */}
-                    {product.images?.length > 1 && (
-                        <div className="flex gap-2">
-                            {product.images.map((img, i) => (
-                                <button key={i} onClick={() => setSelectedImage(i)}
-                                    className={`w-16 h-16 border overflow-hidden cursor-pointer ${
-                                        selectedImage === i ? 'border-white' : 'border-neutral-700 hover:border-neutral-500'
-                                    } transition-colors`}>
-                                    <img src={img.url} alt="" className="w-full h-full object-cover" />
-                                </button>
-                            ))}
-                        </div>
-                    )}
-                </div>
+                <ImageGallery
+                    images={product.images}
+                    selectedIndex={selectedImage}
+                    onSelect={setSelectedImage}
+                />
 
                 {/* Details */}
                 <div>

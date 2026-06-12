@@ -14,13 +14,13 @@ const AppContent = () => {
       try {
         await getMe();
       } catch (err) {
-        // Silent catch: if no token exists or is expired, the user remains unauthenticated
+        console.error(err);
       } finally {
         setCheckingSession(false);
       }
     };
     initApp();
-  }, []); // Run exactly once on mount
+  }, []);
 
   if (checkingSession) {
     return (

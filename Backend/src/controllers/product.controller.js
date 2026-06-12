@@ -46,7 +46,9 @@ const createProduct = async (req, res) => {
 const getAllProducts = async (req, res) => {
     try {
         const { category, size, condition, minPrice, maxPrice, search, sort } = req.query;
-
+        const page= parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
         const filter = { status: "active", stock: { $gt: 0 } };
 
         if (category) filter.category = category;
@@ -70,9 +72,19 @@ const getAllProducts = async (req, res) => {
 
         const products = await Product.find(filter)
             .sort(sortOption)
-            .populate("seller", "fullName sellerProfile.shopName sellerProfile.avatar");
+            .populate("seller", "fullName sellerProfile.shopName sellerProfile.avatar")
+            .skip(skip)
+            .limit(limit);
 
-        res.status(200).json({ products });
+        const totalProducts = await Product.countDocuments(filter);
+        const totalPages = Math.ceil(totalProducts / limit);
+
+        res.status(200).json({ 
+            products,
+            page,
+            totalPages,
+            totalProducts
+        });
     } catch (error) {
         res.status(500).json({ message: "Error fetching products", error: error.message });
     }
