@@ -91,7 +91,7 @@ const requestWithdrawal = async (req, res) => {
 
 // POST /api/wallet/settle — (Internal use) settle pending → available after delivery
 // Called automatically when order is delivered
-const settlePendingBalance = async (userId, amount, orderId) => {
+const settlePendingBalance = async (userId, amount, orderId, type = "sale") => {
     const user = await User.findById(userId);
     if (!user) return;
 
@@ -100,13 +100,17 @@ const settlePendingBalance = async (userId, amount, orderId) => {
     user.wallet.availableBalance += amount;
     await user.save();
 
+    const description = type === "royalty"
+        ? `Royalty received — ₹${amount} added to available balance`
+        : `Sale completed — ₹${amount} added to available balance`;
+
     await Transaction.create({
         user: userId,
-        type: "sale",
+        type,
         amount,
         order: orderId,
         status: "completed",
-        description: `Sale completed — ₹${amount} added to available balance`,
+        description,
     });
 };
 

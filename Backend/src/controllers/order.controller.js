@@ -1,23 +1,15 @@
 const Order = require("../models/order.model");
 const Product = require("../models/product.model");
 const User = require("../models/user.models");
+const Offer = require("../models/offer.model");
+const { settlePendingBalance } = require("./wallet.controller");
 
 // POST /api/orders — buyer places an order
 const placeOrder = async (req, res) => {
     try {
-        const { productId, quantity, shippingAddress } = req.body;
+        const { productId, quantity, shippingAddress, offerId } = req.body;
 
-        const product = await Product.findByIdAndUpdate(
-            {
-                _id: productId,
-                status: "active",
-                stock: { $gte: quantity },
-            },
-            {
-                $inc: { stock: -quantity },
-            },
-            { new: true }
-        )
+        const product = await Product.findById(productId);
 
         if (!product) {
             return res.status(404).json({ error: "Product not found" });
@@ -36,7 +28,36 @@ const placeOrder = async (req, res) => {
             return res.status(400).json({ error: "You cannot buy your own product" });
         }
 
-        const totalPrice = product.price.amount * quantity;
+        let totalPrice;
+        let finalUnitPrice = product.price.amount;
+
+        if (offerId) {
+            const offer = await Offer.findById(offerId);
+            if (!offer) {
+                return res.status(404).json({ error: "Negotiated offer not found" });
+            }
+            if (offer.buyer.toString() !== req.user._id.toString()) {
+                return res.status(403).json({ error: "This offer does not belong to you" });
+            }
+            if (offer.product.toString() !== productId) {
+                return res.status(400).json({ error: "Offer does not match the product" });
+            }
+            if (offer.status !== "accepted" && offer.status !== "countered") {
+                return res.status(400).json({ error: `Offer is not in an accepted/countered state (status: ${offer.status})` });
+            }
+
+            finalUnitPrice = offer.status === "countered" ? offer.counterPrice : offer.offeredPrice;
+            totalPrice = finalUnitPrice * quantity;
+        } else {
+            totalPrice = product.price.amount * quantity;
+        }
+
+        // Reduce stock once and mark sold if zero
+        product.stock -= quantity;
+        if (product.stock === 0) {
+            product.status = "sold";
+        }
+        await product.save();
 
         const order = await Order.create({
             buyer: req.user._id,
@@ -47,12 +68,11 @@ const placeOrder = async (req, res) => {
             shippingAddress,
         });
 
-        // Reduce stock
-        product.stock -= quantity;
-        if (product.stock === 0) {
-            product.status = "sold";
+        // Delete the offer now that it has been purchased/resolved
+        if (offerId) {
+            const Offer = require("../models/offer.model");
+            await Offer.findByIdAndDelete(offerId);
         }
-        await product.save();
 
         // Populate for response
         await order.populate("product", "title images price");
@@ -163,12 +183,38 @@ const updateOrderStatus = async (req, res) => {
         if (status === "delivered" && order.paymentStatus !== "paid") {
             order.paymentStatus = "paid";
 
-            // Credit seller wallet (pending balance — T+2 settlement)
-            const seller = await User.findById(order.seller);
-            if (seller) {
-                seller.wallet.pendingBalance += order.totalPrice;
-                seller.wallet.totalEarned += order.totalPrice;
-                await seller.save();
+            const product = await Product.findById(order.product);
+            if (product && product.isReSnitched) {
+                // Calculate royalty and seller shares
+                const royaltyAmount = (order.totalPrice * (product.royaltyRate || 5)) / 100;
+                const sellerShare = order.totalPrice - royaltyAmount;
+
+                // 1. Pay original seller (royalty)
+                const originalSeller = await User.findById(product.originalSeller);
+                if (originalSeller) {
+                    originalSeller.wallet.pendingBalance += royaltyAmount;
+                    originalSeller.wallet.totalEarned += royaltyAmount;
+                    await originalSeller.save();
+                    await settlePendingBalance(product.originalSeller, royaltyAmount, order._id, "royalty");
+                }
+
+                // 2. Pay current seller (remaining sale share)
+                const currentSeller = await User.findById(order.seller);
+                if (currentSeller) {
+                    currentSeller.wallet.pendingBalance += sellerShare;
+                    currentSeller.wallet.totalEarned += sellerShare;
+                    await currentSeller.save();
+                    await settlePendingBalance(order.seller, sellerShare, order._id, "sale");
+                }
+            } else {
+                // Normal product - full payout to seller
+                const seller = await User.findById(order.seller);
+                if (seller) {
+                    seller.wallet.pendingBalance += order.totalPrice;
+                    seller.wallet.totalEarned += order.totalPrice;
+                    await seller.save();
+                    await settlePendingBalance(order.seller, order.totalPrice, order._id, "sale");
+                }
             }
         }
 

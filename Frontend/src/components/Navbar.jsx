@@ -78,6 +78,11 @@ const Navbar = () => {
                                                 My Orders
                                             </Link>
 
+                                            <Link to="/my-offers" onClick={() => setMenuOpen(false)}
+                                                className="block px-4 py-2.5 text-xs text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors">
+                                                My Offers
+                                            </Link>
+
                                             {!user.isSeller && (
                                                 <Link to="/become-seller" onClick={() => setMenuOpen(false)}
                                                     className="block px-4 py-2.5 text-xs text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors">

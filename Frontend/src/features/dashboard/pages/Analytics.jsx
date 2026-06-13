@@ -19,6 +19,57 @@ const Analytics = () => {
     const maxRevenue = chart.length ? Math.max(...chart.map(c => c.revenue), 1) : 1;
     const maxCatRevenue = categories.length ? Math.max(...categories.map(c => c.totalRevenue), 1) : 1;
 
+    // Dynamic Path Generator for the SVG Bezier Line & Area Chart
+    const getSvgPaths = (data) => {
+        const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+        const activeData = [];
+        const currentMonthIndex = new Date().getMonth(); // 0-11
+        
+        // Generate last 6 months dynamically and populate with real DB revenue
+        for (let i = 5; i >= 0; i--) {
+            const targetMonthIndex = (currentMonthIndex - i + 12) % 12;
+            const m = months[targetMonthIndex];
+            const matched = data ? data.find(item => item.month === m) : null;
+            activeData.push({
+                month: m,
+                revenue: matched ? matched.revenue : 0
+            });
+        }
+
+        const width = 800;
+        const height = 160;
+        const paddingX = 40;
+        const paddingY = 20;
+        const chartWidth = width - paddingX * 2;
+        const chartHeight = height - paddingY * 2;
+
+        const maxVal = Math.max(...activeData.map(d => d.revenue), 1000);
+        
+        const points = activeData.map((d, i) => {
+            const x = paddingX + (i / (activeData.length - 1)) * chartWidth;
+            const y = height - paddingY - (d.revenue / maxVal) * chartHeight;
+            return { x, y };
+        });
+
+        // Generate smooth Bezier curve
+        let linePath = `M ${points[0].x},${points[0].y}`;
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[i];
+            const p1 = points[i + 1];
+            const cp1x = p0.x + (p1.x - p0.x) / 3;
+            const cp1y = p0.y;
+            const cp2x = p0.x + 2 * (p1.x - p0.x) / 3;
+            const cp2y = p1.y;
+            linePath += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${p1.x},${p1.y}`;
+        }
+
+        const areaPath = `${linePath} L ${points[points.length - 1].x},${height - paddingY} L ${points[0].x},${height - paddingY} Z`;
+        
+        return { linePath, areaPath, maxVal, activeData };
+    };
+
+    const { linePath, areaPath, maxVal, activeData } = getSvgPaths(chart);
+
     return (
         <div className="min-h-screen bg-[#0a0a0a] text-white flex">
             <DashboardSidebar />
@@ -50,24 +101,64 @@ const Analytics = () => {
                             </div>
 
                             {/* Revenue Chart */}
-                            <div className="bg-[#141414] border border-neutral-900 p-6 mb-8">
+                            <div className="bg-[#141414] border border-neutral-950 p-6 mb-8">
                                 <h2 className="text-xs font-semibold tracking-widest uppercase mb-6 text-neutral-400">Revenue — Last 6 Months</h2>
-                                {chart.length === 0 ? (
-                                    <p className="text-neutral-600 text-sm text-center py-8">No revenue data yet.</p>
-                                ) : (
-                                    <div className="flex items-end gap-3 h-40">
-                                        {chart.map((c, i) => (
-                                            <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                                                <span className="text-[9px] text-neutral-500">₹{c.revenue >= 1000 ? `${(c.revenue / 1000).toFixed(1)}k` : c.revenue}</span>
-                                                <div
-                                                    className="w-full bg-white/80 transition-all duration-500"
-                                                    style={{ height: `${Math.max((c.revenue / maxRevenue) * 120, 4)}px` }}
-                                                />
-                                                <span className="text-[9px] text-neutral-500">{c.month}</span>
-                                            </div>
-                                        ))}
+                                <div className="relative h-44 w-full flex">
+                                    {/* Y-Axis Labels */}
+                                    <div className="flex flex-col justify-between text-[10px] text-neutral-500 pr-4 pb-6 h-full text-right select-none w-16">
+                                        <span>₹{maxVal.toLocaleString()}</span>
+                                        <span>₹{Math.round(maxVal * 0.5).toLocaleString()}</span>
+                                        <span>₹0</span>
                                     </div>
-                                )}
+
+                                    {/* Chart Canvas Area */}
+                                    <div className="flex-1 h-full relative flex flex-col justify-between">
+                                        {/* Background Grid Lines */}
+                                        <div className="absolute inset-0 flex flex-col justify-between pb-6 pointer-events-none">
+                                            <div className="border-b border-neutral-900 w-full h-0" />
+                                            <div className="border-b border-neutral-900 w-full h-0" />
+                                            <div className="border-b border-neutral-900 w-full h-0" />
+                                        </div>
+
+                                        {/* SVG Bezier Area & Line */}
+                                        <div className="absolute inset-x-0 top-0 bottom-6 pointer-events-none">
+                                            <svg className="w-full h-full" viewBox="0 0 800 160" preserveAspectRatio="none">
+                                                <defs>
+                                                    <linearGradient id="glowGrad" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="0%" stopColor="#22c55e" stopOpacity="0.3" />
+                                                        <stop offset="100%" stopColor="#22c55e" stopOpacity="0.0" />
+                                                    </linearGradient>
+                                                </defs>
+
+                                                {/* Area Path */}
+                                                {areaPath && (
+                                                    <path
+                                                        d={areaPath}
+                                                        fill="url(#glowGrad)"
+                                                    />
+                                                )}
+
+                                                {/* Line Path */}
+                                                {linePath && (
+                                                    <path
+                                                        d={linePath}
+                                                        fill="transparent"
+                                                        stroke="#22c55e"
+                                                        strokeWidth="3"
+                                                        strokeLinecap="round"
+                                                    />
+                                                )}
+                                            </svg>
+                                        </div>
+
+                                        {/* X-Axis Labels */}
+                                        <div className="absolute bottom-0 inset-x-0 h-6 flex justify-between text-[10px] text-neutral-500 font-medium px-4 select-none">
+                                            {activeData.map((d, index) => (
+                                                <span key={index}>{d.month}</span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="grid md:grid-cols-2 gap-6">

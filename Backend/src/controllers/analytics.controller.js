@@ -107,12 +107,12 @@ const getTopProducts = async (req, res) => {
             { $unwind: "$product" },
             {
                 $project: {
-                    _id: 0,
+                    _id: 0, // 0 means exclude
                     productId: "$product._id",
                     title: "$product.title",
                     image: { $arrayElemAt: ["$product.images.url", 0] },
                     price: "$product.price.amount",
-                    totalSold: 1,
+                    totalSold: 1, // 1 means include
                     totalRevenue: 1,
                 },
             },

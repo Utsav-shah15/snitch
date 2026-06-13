@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { clearCart } from '../cartSlice';
-import useCheckout from '../hooks/useCheckout';
+import { placeOrder } from '../../orders/services/order.service';
 
 const Checkout = () => {
     const { items } = useSelector((state) => state.cart);
@@ -10,28 +10,62 @@ const Checkout = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
-    const {
-        address,
-        errors,
-        orderError,
-        isSubmitting,
-        success,
-        handleChange,
-        placeAllOrders,
-    } = useCheckout();
+    const [address, setAddress] = useState({ street: '', city: '', state: '', pincode: '' });
+    const [errors, setErrors] = useState({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [orderError, setOrderError] = useState('');
+    const [success, setSuccess] = useState(false);
 
     if (!user) return <Navigate to="/login" replace />;
     if (items.length === 0 && !success) return <Navigate to="/cart" replace />;
 
     const total = items.reduce((sum, item) => sum + (item.price?.amount || 0) * item.quantity, 0);
 
+    const handleChange = (e) => {
+        const { name, value } = e.target;
+        setAddress((prev) => ({ ...prev, [name]: value }));
+        if (errors[name]) setErrors((prev) => ({ ...prev, [name]: '' }));
+        setOrderError('');
+    };
+
+    const validate = () => {
+        const errs = {};
+        if (!address.street.trim()) errs.street = 'Street address is required';
+        if (!address.city.trim()) errs.city = 'City is required';
+        if (!address.state.trim()) errs.state = 'State is required';
+        if (!address.pincode.trim()) errs.pincode = 'Pincode is required';
+        else if (!/^\d{6}$/.test(address.pincode.trim())) errs.pincode = 'Pincode must be 6 digits';
+        setErrors(errs);
+        return Object.keys(errs).length === 0;
+    };
+
     const handlePlaceOrder = async () => {
+        if (!validate()) return;
+        setIsSubmitting(true);
+        setOrderError('');
+
         try {
-            await placeAllOrders(items);
+            // Place order for each cart item
+            for (const item of items) {
+                await placeOrder({
+                    productId: item._id,
+                    quantity: item.quantity,
+                    shippingAddress: {
+                        street: address.street.trim(),
+                        city: address.city.trim(),
+                        state: address.state.trim(),
+                        pincode: address.pincode.trim(),
+                    },
+                });
+            }
+
             dispatch(clearCart());
+            setSuccess(true);
             setTimeout(() => navigate('/orders'), 3000);
-        } catch {
-            // error is handled by the hook
+        } catch (err) {
+            setOrderError(err.response?.data?.error || 'Failed to place order. Please try again.');
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -71,9 +105,8 @@ const Checkout = () => {
                             <label className="text-[10px] font-semibold tracking-wider text-neutral-400 block mb-1.5 uppercase">Street Address</label>
                             <input type="text" name="street" value={address.street} onChange={handleChange}
                                 placeholder="123, MG Road, Near City Mall"
-                                className={`w-full bg-[#1c1c1c] border px-4 py-3 text-sm text-white placeholder-neutral-500 outline-none ${
-                                    errors.street ? 'border-red-800' : 'border-neutral-700 focus:border-neutral-500'
-                                } transition-colors`} />
+                                className={`w-full bg-[#1c1c1c] border px-4 py-3 text-sm text-white placeholder-neutral-500 outline-none ${errors.street ? 'border-red-800' : 'border-neutral-700 focus:border-neutral-500'
+                                    } transition-colors`} />
                             {errors.street && <p className="text-[11px] text-red-500 mt-1">{errors.street}</p>}
                         </div>
 
@@ -82,18 +115,16 @@ const Checkout = () => {
                                 <label className="text-[10px] font-semibold tracking-wider text-neutral-400 block mb-1.5 uppercase">City</label>
                                 <input type="text" name="city" value={address.city} onChange={handleChange}
                                     placeholder="Mumbai"
-                                    className={`w-full bg-[#1c1c1c] border px-4 py-3 text-sm text-white placeholder-neutral-500 outline-none ${
-                                        errors.city ? 'border-red-800' : 'border-neutral-700 focus:border-neutral-500'
-                                    } transition-colors`} />
+                                    className={`w-full bg-[#1c1c1c] border px-4 py-3 text-sm text-white placeholder-neutral-500 outline-none ${errors.city ? 'border-red-800' : 'border-neutral-700 focus:border-neutral-500'
+                                        } transition-colors`} />
                                 {errors.city && <p className="text-[11px] text-red-500 mt-1">{errors.city}</p>}
                             </div>
                             <div>
                                 <label className="text-[10px] font-semibold tracking-wider text-neutral-400 block mb-1.5 uppercase">State</label>
                                 <input type="text" name="state" value={address.state} onChange={handleChange}
                                     placeholder="Maharashtra"
-                                    className={`w-full bg-[#1c1c1c] border px-4 py-3 text-sm text-white placeholder-neutral-500 outline-none ${
-                                        errors.state ? 'border-red-800' : 'border-neutral-700 focus:border-neutral-500'
-                                    } transition-colors`} />
+                                    className={`w-full bg-[#1c1c1c] border px-4 py-3 text-sm text-white placeholder-neutral-500 outline-none ${errors.state ? 'border-red-800' : 'border-neutral-700 focus:border-neutral-500'
+                                        } transition-colors`} />
                                 {errors.state && <p className="text-[11px] text-red-500 mt-1">{errors.state}</p>}
                             </div>
                         </div>
@@ -102,9 +133,8 @@ const Checkout = () => {
                             <label className="text-[10px] font-semibold tracking-wider text-neutral-400 block mb-1.5 uppercase">Pincode</label>
                             <input type="text" name="pincode" value={address.pincode} onChange={handleChange}
                                 placeholder="400001" maxLength={6}
-                                className={`w-full bg-[#1c1c1c] border px-4 py-3 text-sm text-white placeholder-neutral-500 outline-none ${
-                                    errors.pincode ? 'border-red-800' : 'border-neutral-700 focus:border-neutral-500'
-                                } transition-colors`} />
+                                className={`w-full bg-[#1c1c1c] border px-4 py-3 text-sm text-white placeholder-neutral-500 outline-none ${errors.pincode ? 'border-red-800' : 'border-neutral-700 focus:border-neutral-500'
+                                    } transition-colors`} />
                             {errors.pincode && <p className="text-[11px] text-red-500 mt-1">{errors.pincode}</p>}
                         </div>
                     </div>

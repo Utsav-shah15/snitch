@@ -6,6 +6,7 @@ import {
     acceptOffer as acceptOfferApi,
     counterOffer as counterOfferApi,
     declineOffer as declineOfferApi,
+    getOfferById as getOfferByIdApi,
 } from '../services/offer.service';
 
 /**
@@ -118,6 +119,22 @@ const useOffers = () => {
         }
     }, []);
 
+    // Fetch details of a single offer
+    const fetchOfferById = useCallback(async (id) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const data = await getOfferByIdApi(id);
+            return data;
+        } catch (err) {
+            const message = err.response?.data?.error || 'Failed to fetch offer details';
+            setError(message);
+            throw new Error(message);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
     return {
         myOffers,
         receivedOffers,
@@ -129,6 +146,7 @@ const useOffers = () => {
         acceptOffer,
         counterOffer,
         declineOffer,
+        fetchOfferById,
     };
 };
 

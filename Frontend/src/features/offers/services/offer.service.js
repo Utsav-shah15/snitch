@@ -34,3 +34,8 @@ export const declineOffer = async (id) => {
     const response = await api.patch(`/${id}/decline`);
     return response.data;
 };
+
+export const getOfferById = async (id) => {
+    const response = await api.get(`/${id}`);
+    return response.data;
+};

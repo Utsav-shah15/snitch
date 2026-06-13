@@ -117,6 +117,10 @@ const Listings = () => {
                                             className="text-[10px] text-neutral-500 hover:text-white uppercase tracking-wider transition-colors px-3 py-1.5 border border-neutral-800 hover:border-neutral-600">
                                             View
                                         </Link>
+                                        <Link to={`/dashboard/listings/edit/${product._id}`}
+                                            className="text-[10px] text-neutral-400 hover:text-white uppercase tracking-wider transition-colors px-3 py-1.5 border border-neutral-800 hover:border-neutral-600">
+                                            Edit
+                                        </Link>
                                         <button
                                             onClick={() => handleDelete(product._id)}
                                             disabled={deletingId === product._id}

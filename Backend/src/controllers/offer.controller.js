@@ -162,4 +162,26 @@ const declineOffer = async (req, res) => {
     }
 };
 
-module.exports = { makeOffer, getMyOffers, getReceivedOffers, acceptOffer, counterOffer, declineOffer };
+// GET /api/offers/:id — get single offer details
+const getOfferById = async (req, res) => {
+    try {
+        const offer = await Offer.findById(req.params.id)
+            .populate("product", "title images price status")
+            .populate("seller", "fullName sellerProfile")
+            .populate("buyer", "fullName email");
+
+        if (!offer) return res.status(404).json({ error: "Offer not found" });
+
+        // Only buyer or seller can view this offer
+        if (offer.buyer._id.toString() !== req.user._id.toString() && 
+            offer.seller._id.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ error: "Not authorized" });
+        }
+
+        res.status(200).json({ offer });
+    } catch (error) {
+        res.status(500).json({ error: "Error fetching offer details", details: error.message });
+    }
+};
+
+module.exports = { makeOffer, getMyOffers, getReceivedOffers, acceptOffer, counterOffer, declineOffer, getOfferById };

@@ -24,6 +24,9 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(morgan("dev"));
 
+const path = require("path");
+app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
+
 app.use("/api/auth", authRoutes);
 app.use("/auth", authRoutes);
 app.use("/api/products", productRoutes);

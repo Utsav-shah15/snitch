@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import { useSelector } from 'react-redux';
 import ProductCard from '../components/ProductCard';
 import useProducts from '../hooks/useProducts';
 
 const Browse = () => {
     const [searchParams, setSearchParams] = useSearchParams();
     const { products, loading, fetchAllProducts } = useProducts();
+    const { user } = useSelector((state) => state.auth);
 
     // Filters
     const [filters, setFilters] = useState({
@@ -133,47 +135,59 @@ const Browse = () => {
                 {/* Products Grid */}
                 <div className="flex-1">
                     {/* Sort bar */}
-                    <div className="flex items-center justify-between mb-6">
-                        <p className="text-xs text-neutral-500">
-                            {loading ? '...' : `${products.length} products`}
-                        </p>
-                        <select value={filters.sort} onChange={(e) => handleFilter('sort', e.target.value)}
-                            className="bg-[#141414] border border-neutral-700 text-xs text-neutral-400 px-3 py-2 outline-none cursor-pointer">
-                            <option value="">Newest</option>
-                            <option value="price_asc">Price: Low → High</option>
-                            <option value="price_desc">Price: High → Low</option>
-                        </select>
-                    </div>
+                    {(() => {
+                        const filteredProducts = products.filter((product) => {
+                            const sellerId = product.seller?._id || product.seller?.id || product.seller;
+                            const isOwnProduct = user && sellerId && (sellerId === user.id || sellerId === user._id);
+                            return !isOwnProduct;
+                        });
 
-                    {loading ? (
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                            {[...Array(6)].map((_, i) => (
-                                <div key={i} className="bg-[#141414] border border-neutral-800 animate-pulse">
-                                    <div className="aspect-[3/4] bg-neutral-800" />
-                                    <div className="p-3 space-y-2">
-                                        <div className="h-3 bg-neutral-800 rounded w-1/2" />
-                                        <div className="h-4 bg-neutral-800 rounded w-3/4" />
-                                    </div>
+                        return (
+                            <>
+                                <div className="flex items-center justify-between mb-6">
+                                    <p className="text-xs text-neutral-500">
+                                        {loading ? '...' : `${filteredProducts.length} products`}
+                                    </p>
+                                    <select value={filters.sort} onChange={(e) => handleFilter('sort', e.target.value)}
+                                        className="bg-[#141414] border border-neutral-700 text-xs text-neutral-400 px-3 py-2 outline-none cursor-pointer">
+                                        <option value="">Newest</option>
+                                        <option value="price_asc">Price: Low → High</option>
+                                        <option value="price_desc">Price: High → Low</option>
+                                    </select>
                                 </div>
-                            ))}
-                        </div>
-                    ) : products.length > 0 ? (
-                        <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                            {products.map((product) => (
-                                <ProductCard key={product._id} product={product} />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-20">
-                            <p className="text-neutral-500 text-sm">No products found</p>
-                            {activeFilterCount > 0 && (
-                                <button onClick={clearFilters}
-                                    className="text-white text-xs underline mt-2 cursor-pointer">
-                                    Clear filters
-                                </button>
-                            )}
-                        </div>
-                    )}
+
+                                {loading ? (
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {[...Array(6)].map((_, i) => (
+                                            <div key={i} className="bg-[#141414] border border-neutral-800 animate-pulse">
+                                                <div className="aspect-[3/4] bg-neutral-800" />
+                                                <div className="p-3 space-y-2">
+                                                    <div className="h-3 bg-neutral-800 rounded w-1/2" />
+                                                    <div className="h-4 bg-neutral-800 rounded w-3/4" />
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : filteredProducts.length > 0 ? (
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {filteredProducts.map((product) => (
+                                            <ProductCard key={product._id} product={product} />
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-20">
+                                        <p className="text-neutral-500 text-sm">No products found</p>
+                                        {activeFilterCount > 0 && (
+                                            <button onClick={clearFilters}
+                                                className="text-white text-xs underline mt-2 cursor-pointer">
+                                                Clear filters
+                                            </button>
+                                        )}
+                                    </div>
+                                )}
+                            </>
+                        );
+                    })()}
                 </div>
             </div>
         </div>
