@@ -11,6 +11,7 @@ const orderRoutes=require("./routes/order.routes");
 const walletRoutes=require("./routes/wallet.routes");
 const offerRoutes=require("./routes/offer.routes");
 const analyticsRoutes=require("./routes/analytics.routes");
+const aiRoutes=require("./routes/ai.routes");
 
 app.use(
   cors({
@@ -34,6 +35,7 @@ app.use("/api/orders", orderRoutes);
 app.use("/api/wallet", walletRoutes);
 app.use("/api/offers", offerRoutes);
 app.use("/api/analytics", analyticsRoutes);
+app.use("/api/ai", aiRoutes);
 
 module.exports=app;
 

@@ -3,6 +3,7 @@ import { Navigate, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import useAnalytics from '../../analytics/hooks/useAnalytics';
 import DashboardSidebar from '../components/DashboardSidebar';
+import TrendForecaster from '../components/TrendForecaster';
 
 const BAR_COLORS = ['bg-white', 'bg-neutral-300', 'bg-neutral-500', 'bg-neutral-600', 'bg-neutral-700'];
 const CAT_COLORS = ['bg-white', 'bg-neutral-400', 'bg-neutral-600', 'bg-neutral-700'];
@@ -214,6 +215,11 @@ const Analytics = () => {
                             </div>
                         </>
                     )}
+
+                    {/* AI Trend Forecaster */}
+                    <div className="mt-8">
+                        <TrendForecaster />
+                    </div>
                 </div>
             </main>
         </div>

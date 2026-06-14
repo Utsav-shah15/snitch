@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { clearCart } from '../cartSlice';
 import { placeOrder } from '../../orders/services/order.service';
+import { getProductById } from '../../products/services/product.service';
+import { getOfferById } from '../../offers/services/offer.service';
 
 const Checkout = () => {
     const { items } = useSelector((state) => state.cart);
@@ -10,16 +12,91 @@ const Checkout = () => {
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
+    // Query params for Buy Now / Accept Offer direct purchase
+    const [searchParams] = useSearchParams();
+    const productIdParam = searchParams.get('productId');
+    const quantityParam = parseInt(searchParams.get('quantity')) || 1;
+    const offerIdParam = searchParams.get('offerId');
+
+    const [directProduct, setDirectProduct] = useState(null);
+    const [directOffer, setDirectOffer] = useState(null);
+    const [directLoading, setDirectLoading] = useState(false);
+    const [fetchError, setFetchError] = useState(null);
+
     const [address, setAddress] = useState({ street: '', city: '', state: '', pincode: '' });
     const [errors, setErrors] = useState({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderError, setOrderError] = useState('');
     const [success, setSuccess] = useState(false);
 
-    if (!user) return <Navigate to="/login" replace />;
-    if (items.length === 0 && !success) return <Navigate to="/cart" replace />;
+    // Fetch direct purchase product/offer details
+    useEffect(() => {
+        if (!productIdParam) return;
 
-    const total = items.reduce((sum, item) => sum + (item.price?.amount || 0) * item.quantity, 0);
+        const loadDirectCheckoutData = async () => {
+            setDirectLoading(true);
+            setFetchError(null);
+            try {
+                const productRes = await getProductById(productIdParam);
+                setDirectProduct(productRes.product);
+
+                if (offerIdParam) {
+                    const offerRes = await getOfferById(offerIdParam);
+                    setDirectOffer(offerRes.offer);
+                }
+            } catch (err) {
+                setFetchError(err.message || 'Failed to load checkout details.');
+            } finally {
+                setDirectLoading(false);
+            }
+        };
+
+        loadDirectCheckoutData();
+    }, [productIdParam, offerIdParam]);
+
+    if (!user) return <Navigate to="/login" replace />;
+
+    // Redirect to cart ONLY if there is no direct product purchase and cart is empty
+    if (!productIdParam && items.length === 0 && !success) {
+        return <Navigate to="/cart" replace />;
+    }
+
+    if (directLoading) {
+        return (
+            <div className="min-h-screen bg-[#0a0a0a] text-white flex items-center justify-center">
+                <div className="w-8 h-8 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+            </div>
+        );
+    }
+
+    if (fetchError) {
+        return (
+            <div className="max-w-md mx-auto px-4 py-20 text-center text-white">
+                <div className="text-red-500 mb-4 text-3xl">✕</div>
+                <h2 className="font-serif text-2xl tracking-widest uppercase mb-2">Error</h2>
+                <p className="text-neutral-500 text-sm mb-6">{fetchError}</p>
+                <button onClick={() => navigate('/browse')} className="bg-white text-black text-xs font-bold tracking-[0.2em] px-8 py-3 uppercase">
+                    Back to Browse
+                </button>
+            </div>
+        );
+    }
+
+    // Determine checkout items and total price
+    const checkoutItems = productIdParam
+        ? (directProduct ? [{
+            ...directProduct,
+            quantity: quantityParam,
+            price: {
+                ...directProduct.price,
+                amount: directOffer
+                    ? (directOffer.status === 'countered' ? directOffer.counterPrice : directOffer.offeredPrice)
+                    : directProduct.price.amount
+            }
+          }] : [])
+        : items;
+
+    const total = checkoutItems.reduce((sum, item) => sum + (item.price?.amount || 0) * item.quantity, 0);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -45,9 +122,9 @@ const Checkout = () => {
         setOrderError('');
 
         try {
-            // Place order for each cart item
-            for (const item of items) {
-                await placeOrder({
+            // Place order for each item in the checkout list
+            for (const item of checkoutItems) {
+                const orderPayload = {
                     productId: item._id,
                     quantity: item.quantity,
                     shippingAddress: {
@@ -56,10 +133,21 @@ const Checkout = () => {
                         state: address.state.trim(),
                         pincode: address.pincode.trim(),
                     },
-                });
+                };
+
+                // Inject offer ID if this is a negotiated offer direct purchase
+                if (productIdParam && offerIdParam) {
+                    orderPayload.offerId = offerIdParam;
+                }
+
+                await placeOrder(orderPayload);
             }
 
-            dispatch(clearCart());
+            // Only clear cart if checkout was initiated from Cart
+            if (!productIdParam) {
+                dispatch(clearCart());
+            }
+
             setSuccess(true);
             setTimeout(() => navigate('/orders'), 3000);
         } catch (err) {
@@ -71,7 +159,7 @@ const Checkout = () => {
 
     if (success) {
         return (
-            <div className="max-w-md mx-auto px-4 py-20 text-center">
+            <div className="max-w-md mx-auto px-4 py-20 text-center text-white">
                 <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-black mx-auto mb-6">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
@@ -86,7 +174,7 @@ const Checkout = () => {
     }
 
     return (
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto px-4 py-8 text-white">
             <h1 className="text-[10px] font-bold tracking-[0.3em] text-neutral-500 uppercase mb-8">Checkout</h1>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -134,7 +222,7 @@ const Checkout = () => {
                             <input type="text" name="pincode" value={address.pincode} onChange={handleChange}
                                 placeholder="400001" maxLength={6}
                                 className={`w-full bg-[#1c1c1c] border px-4 py-3 text-sm text-white placeholder-neutral-500 outline-none ${errors.pincode ? 'border-red-800' : 'border-neutral-700 focus:border-neutral-500'
-                                    } transition-colors`} />
+                                        } transition-colors`} />
                             {errors.pincode && <p className="text-[11px] text-red-500 mt-1">{errors.pincode}</p>}
                         </div>
                     </div>
@@ -145,7 +233,7 @@ const Checkout = () => {
                     <h3 className="text-[10px] font-bold tracking-[0.2em] text-neutral-500 uppercase mb-4">Order Summary</h3>
 
                     <div className="space-y-3 mb-4 max-h-60 overflow-y-auto">
-                        {items.map((item) => (
+                        {checkoutItems.map((item) => (
                             <div key={item._id} className="flex items-center gap-3">
                                 <div className="w-10 h-10 bg-neutral-800 shrink-0 overflow-hidden">
                                     {item.images?.[0]?.url && (
@@ -170,7 +258,7 @@ const Checkout = () => {
                         </div>
                     </div>
 
-                    <button onClick={handlePlaceOrder} disabled={isSubmitting}
+                    <button onClick={handlePlaceOrder} disabled={isSubmitting || checkoutItems.length === 0}
                         className="w-full bg-white text-black text-xs font-bold tracking-[0.2em] py-3.5 hover:bg-neutral-200 transition-colors uppercase cursor-pointer disabled:bg-neutral-700 disabled:text-neutral-400 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                         {isSubmitting ? (
                             <>

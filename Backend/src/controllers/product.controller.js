@@ -60,10 +60,27 @@ const getAllProducts = async (req, res) => {
             if (maxPrice) filter["price.amount"].$lte = Number(maxPrice);
         }
         if (search) {
-            filter.$or = [
-                { title: { $regex: search, $options: "i" } },
-                { description: { $regex: search, $options: "i" } },
-            ];
+            const cleanSearch = search.trim().toLowerCase();
+            if (cleanSearch === "tops" || cleanSearch === "top") {
+                filter.category = "Tops";
+            } else if (cleanSearch === "bottoms" || cleanSearch === "bottom") {
+                filter.category = "Bottoms";
+            } else if (cleanSearch === "footwear" || cleanSearch === "shoes" || cleanSearch === "shoe") {
+                filter.category = "Footwear";
+            } else if (cleanSearch === "accessories" || cleanSearch === "accessory") {
+                filter.category = "Accessories";
+            } else {
+                // Split query into keywords to allow matching multiple terms in any order (e.g. "black shirt" matches "Black Boxy Linen Casual Shirt")
+                const keywords = search.split(/\s+/).filter(w => w.trim().length > 0);
+                if (keywords.length > 0) {
+                    filter.$and = keywords.map(keyword => ({
+                        $or: [
+                            { title: { $regex: keyword, $options: "i" } },
+                            { description: { $regex: keyword, $options: "i" } }
+                        ]
+                    }));
+                }
+            }
         }
 
         let sortOption = { createdAt: -1 }; // default: newest first

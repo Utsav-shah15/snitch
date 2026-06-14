@@ -5,6 +5,7 @@ import useProduct from '../hooks/useProduct';
 import ImageGallery from '../components/ImageGallery';
 import { addToCart } from '../../cart/cartSlice';
 import useOffers from '../../offers/hooks/useOffers';
+import OutfitSuggestions from '../components/OutfitSuggestions';
 
 const ProductDetail = () => {
     const { id } = useParams();
@@ -196,6 +197,9 @@ const ProductDetail = () => {
                     )}
                 </div>
             </div>
+
+            {/* AI Outfit Suggestions */}
+            <OutfitSuggestions productId={id} />
 
             {/* Offer Modal */}
             {showOfferForm && (

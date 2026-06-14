@@ -1,5 +1,5 @@
-import React, { useEffect } from 'react';
-import { Navigate, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import useOrders from '../hooks/useOrders';
 
@@ -13,7 +13,15 @@ const statusColors = {
 
 const Orders = () => {
     const { user } = useSelector((state) => state.auth);
-    const { orders, loading, fetchMyOrders } = useOrders();
+    const { orders, loading, fetchMyOrders, reSnitch } = useOrders();
+    const navigate = useNavigate();
+
+    // Re-Snitch states
+    const [selectedOrder, setSelectedOrder] = useState(null);
+    const [resalePrice, setResalePrice] = useState('');
+    const [resaleDesc, setResaleDesc] = useState('');
+    const [actionLoading, setActionLoading] = useState(false);
+    const [modalError, setModalError] = useState(null);
 
     if (!user) return <Navigate to="/login" replace />;
 
@@ -21,11 +29,45 @@ const Orders = () => {
         fetchMyOrders();
     }, []);
 
+    const handleReSnitchSubmit = async (e) => {
+        e.preventDefault();
+        if (!resalePrice || parseFloat(resalePrice) <= 0) {
+            setModalError("Please enter a valid price");
+            return;
+        }
+
+        setActionLoading(true);
+        setModalError(null);
+
+        try {
+            const result = await reSnitch(selectedOrder._id, {
+                price: parseFloat(resalePrice),
+                description: resaleDesc
+            });
+
+            // Close modal & reset inputs
+            setSelectedOrder(null);
+            setResalePrice('');
+            setResaleDesc('');
+
+            // Redirect to the newly created product page!
+            if (result && result.product) {
+                navigate(`/product/${result.product._id}`);
+            } else {
+                fetchMyOrders();
+            }
+        } catch (err) {
+            setModalError(err.message || "Failed to re-snitch item");
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
     return (
         <div className="max-w-4xl mx-auto px-4 py-8">
             <h1 className="text-[10px] font-bold tracking-[0.3em] text-neutral-500 uppercase mb-8">My Orders</h1>
 
-            {loading ? (
+            {loading && orders.length === 0 ? (
                 <div className="space-y-4">
                     {[...Array(3)].map((_, i) => (
                         <div key={i} className="bg-[#141414] border border-neutral-800 p-5 animate-pulse">
@@ -76,10 +118,20 @@ const Orders = () => {
                                         <p className="text-sm font-bold text-white shrink-0">₹{order.totalPrice?.toLocaleString()}</p>
                                     </div>
 
-                                    <div className="flex items-center justify-between mt-3">
-                                        <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 border ${statusColors[order.status]}`}>
-                                            {order.status}
-                                        </span>
+                                    <div className="flex items-center justify-between mt-4 border-t border-neutral-900 pt-3">
+                                        <div className="flex items-center gap-3">
+                                            <span className={`text-[10px] font-bold uppercase tracking-wider px-2.5 py-1 border ${statusColors[order.status]}`}>
+                                                {order.status}
+                                            </span>
+                                            {order.status === 'delivered' && (
+                                                <button
+                                                    onClick={() => setSelectedOrder(order)}
+                                                    className="text-[10px] font-bold uppercase tracking-widest bg-white text-black px-3 py-1.5 hover:bg-neutral-200 transition-colors rounded flex items-center gap-1"
+                                                >
+                                                    ⚡ Re-Snitch
+                                                </button>
+                                            )}
+                                        </div>
                                         <p className="text-[10px] text-neutral-600">
                                             {new Date(order.createdAt).toLocaleDateString('en-IN', {
                                                 day: 'numeric', month: 'short', year: 'numeric'
@@ -90,6 +142,95 @@ const Orders = () => {
                             </div>
                         </div>
                     ))}
+                </div>
+            )}
+
+            {/* Re-Snitch Modal */}
+            {selectedOrder && (
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+                    <div className="bg-[#101010] border border-neutral-800 rounded-xl max-w-md w-full p-6 space-y-6 relative">
+                        <button
+                            onClick={() => {
+                                setSelectedOrder(null);
+                                setResalePrice('');
+                                setResaleDesc('');
+                                setModalError(null);
+                            }}
+                            className="absolute top-4 right-4 text-neutral-500 hover:text-white text-sm"
+                        >
+                            ✕
+                        </button>
+
+                        <div className="space-y-2">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                ⚡ Re-Snitch Product
+                            </h2>
+                            <p className="text-xs text-neutral-400">
+                                List this item back on the market. The original seller gets a <strong>5% royalty</strong> on every resale.
+                            </p>
+                        </div>
+
+                        {/* Product info preview */}
+                        <div className="flex gap-4 bg-[#181818] border border-neutral-900 p-3 rounded-lg">
+                            <div className="w-12 h-12 bg-neutral-950 border border-neutral-800 overflow-hidden shrink-0 rounded">
+                                {selectedOrder.product?.images?.[0]?.url && (
+                                    <img src={selectedOrder.product.images[0].url} alt="" className="w-full h-full object-cover" />
+                                )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-xs font-semibold text-neutral-200 truncate">{selectedOrder.product?.title}</p>
+                                <p className="text-[10px] text-neutral-500 mt-0.5">Original Purchase Price: ₹{(selectedOrder.product?.price?.amount || selectedOrder.totalPrice).toLocaleString()}</p>
+                            </div>
+                        </div>
+
+                        <form onSubmit={handleReSnitchSubmit} className="space-y-4">
+                            {modalError && (
+                                <div className="p-3 bg-red-900/20 border border-red-800 text-red-400 text-xs rounded-md">
+                                    {modalError}
+                                </div>
+                            )}
+
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                                    Resale Price (₹) *
+                                </label>
+                                <input
+                                    type="number"
+                                    required
+                                    min="1"
+                                    placeholder="Enter your resell price"
+                                    value={resalePrice}
+                                    onChange={(e) => setResalePrice(e.target.value)}
+                                    className="w-full bg-[#161616] border border-neutral-800 px-4 py-2.5 text-sm rounded-md text-white focus:outline-none focus:border-white transition-colors"
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <label className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                                    Resale Description (Optional)
+                                </label>
+                                <textarea
+                                    rows="3"
+                                    placeholder="Describe the condition or add a note..."
+                                    value={resaleDesc}
+                                    onChange={(e) => setResaleDesc(e.target.value)}
+                                    className="w-full bg-[#161616] border border-neutral-800 px-4 py-2.5 text-sm rounded-md text-white focus:outline-none focus:border-white transition-colors resize-none"
+                                />
+                            </div>
+
+                            <button
+                                type="submit"
+                                disabled={actionLoading}
+                                className="w-full bg-white text-black font-bold uppercase tracking-widest text-xs py-3 rounded-md hover:bg-neutral-200 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                {actionLoading ? (
+                                    <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" />
+                                ) : (
+                                    '⚡ List Item'
+                                )}
+                            </button>
+                        </form>
+                    </div>
                 </div>
             )}
         </div>
