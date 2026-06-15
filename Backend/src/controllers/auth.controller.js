@@ -187,7 +187,7 @@ async function googleAuth(req, res) {
 async function googleCallback(req, res) {
     const { code } = req.query;
     if (!code) {
-        return res.redirect("http://localhost:5173/login?error=Google auth failed");
+        return res.redirect("https://snitch-c04s.onrender.com/login?error=Google auth failed");
     }
 
     try {
@@ -205,7 +205,7 @@ async function googleCallback(req, res) {
 
         const tokens = await tokenResponse.json();
         if (!tokens.access_token) {
-            return res.redirect("http://localhost:5173/login?error=Failed to retrieve access token");
+            return res.redirect("https://snitch-c04s.onrender.com/login?error=Failed to retrieve access token");
         }
 
         const userInfoResponse = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
@@ -214,7 +214,7 @@ async function googleCallback(req, res) {
 
         const userInfo = await userInfoResponse.json();
         if (!userInfo.email) {
-            return res.redirect("http://localhost:5173/login?error=Failed to retrieve email");
+            return res.redirect("https://snitch-c04s.onrender.com/login?error=Failed to retrieve email");
         }
 
         let user = await User.findOne({
@@ -238,10 +238,10 @@ async function googleCallback(req, res) {
             maxAge: 7 * 24 * 60 * 60 * 1000,
         });
 
-        res.redirect("http://localhost:5173/");
+        res.redirect("https://snitch-c04s.onrender.com/");
     } catch (error) {
         console.error("Google OAuth Error:", error);
-        res.redirect("http://localhost:5173/login?error=OAuth Server Error");
+        res.redirect("https://snitch-c04s.onrender.com/login?error=OAuth Server Error");
     }
 }
 
