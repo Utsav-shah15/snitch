@@ -49,6 +49,16 @@ const makeOffer = async (req, res) => {
         await offer.populate("product", "title images price");
         await offer.populate("buyer", "fullName");
 
+        // Notify seller of the new offer
+        const { createNotification } = require("../services/notification.service");
+        await createNotification({
+            userId: product.seller,
+            type: "offer",
+            title: "💬 New Offer Received",
+            message: `${req.user.fullName} offered ₹${offeredPrice} for "${offer.product.title}".`,
+            data: { offerId: offer._id.toString(), productId: product._id.toString() },
+        });
+
         res.status(201).json({ message: "Offer submitted successfully", offer });
     } catch (error) {
         res.status(500).json({ error: "Error making offer", details: error.message });
@@ -102,6 +112,17 @@ const acceptOffer = async (req, res) => {
 
         offer.status = "accepted";
         await offer.save();
+        await offer.populate("product", "title");
+
+        // Notify buyer of the accepted offer
+        const { createNotification } = require("../services/notification.service");
+        await createNotification({
+            userId: offer.buyer,
+            type: "offer",
+            title: "🎉 Offer Accepted!",
+            message: `The seller has accepted your offer of ₹${offer.offeredPrice} for "${offer.product.title}".`,
+            data: { offerId: offer._id.toString(), productId: offer.product._id.toString() },
+        });
 
         res.status(200).json({ message: "Offer accepted", offer });
     } catch (error) {
@@ -133,6 +154,17 @@ const counterOffer = async (req, res) => {
         offer.counterPrice = counterPrice;
         offer.status = "countered";
         await offer.save();
+        await offer.populate("product", "title");
+
+        // Notify buyer of the counter offer
+        const { createNotification } = require("../services/notification.service");
+        await createNotification({
+            userId: offer.buyer,
+            type: "offer",
+            title: "💬 Counter Offer Received",
+            message: `The seller countered your offer for "${offer.product.title}" with a price of ₹${counterPrice}.`,
+            data: { offerId: offer._id.toString(), productId: offer.product._id.toString() },
+        });
 
         res.status(200).json({ message: "Counter offer sent", offer });
     } catch (error) {
@@ -155,6 +187,17 @@ const declineOffer = async (req, res) => {
 
         offer.status = "declined";
         await offer.save();
+        await offer.populate("product", "title");
+
+        // Notify buyer of declined offer
+        const { createNotification } = require("../services/notification.service");
+        await createNotification({
+            userId: offer.buyer,
+            type: "offer",
+            title: "❌ Offer Declined",
+            message: `The seller declined your offer for "${offer.product.title}".`,
+            data: { offerId: offer._id.toString(), productId: offer.product._id.toString() },
+        });
 
         res.status(200).json({ message: "Offer declined", offer });
     } catch (error) {

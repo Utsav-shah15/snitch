@@ -18,6 +18,8 @@ import Wallet from '../features/dashboard/pages/Wallet';
 import Offers from '../features/dashboard/pages/Offers';
 import Analytics from '../features/dashboard/pages/Analytics';
 import MyOffers from '../features/offers/pages/MyOffers';
+import Drops from '../features/drops/pages/Drops';
+import DropDetail from '../features/drops/pages/DropDetail';
 
 export const router = createBrowserRouter([
     {
@@ -30,6 +32,8 @@ export const router = createBrowserRouter([
             { path: '/checkout', element: <Checkout /> },
             { path: '/orders', element: <Orders /> },
             { path: '/my-offers', element: <MyOffers /> },
+            { path: '/drops', element: <Drops /> },
+            { path: '/drops/:id', element: <DropDetail /> },
             // Dashboard routes
             { path: '/dashboard', element: <Dashboard /> },
             { path: '/dashboard/listings', element: <Listings /> },

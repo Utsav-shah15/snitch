@@ -2,7 +2,9 @@ const Order = require("../models/order.model");
 const Product = require("../models/product.model");
 const User = require("../models/user.models");
 const Offer = require("../models/offer.model");
+const Drop = require("../models/drop.model");
 const { settlePendingBalance } = require("./wallet.controller");
+const { createNotification } = require("../services/notification.service");
 
 // POST /api/orders — buyer places an order
 const placeOrder = async (req, res) => {
@@ -26,6 +28,20 @@ const placeOrder = async (req, res) => {
         // Buyer can't buy their own product
         if (product.seller.toString() === req.user._id.toString()) {
             return res.status(400).json({ error: "You cannot buy your own product" });
+        }
+
+        // Drop Rule: Each buyer can only purchase 1 product per drop release
+        const drop = await Drop.findOne({ "products.product": productId });
+        if (drop) {
+            const dropProductIds = drop.products.map(p => p.product.toString());
+            const existingDropOrder = await Order.findOne({
+                buyer: req.user._id,
+                product: { $in: dropProductIds },
+                status: { $ne: "cancelled" }
+            });
+            if (existingDropOrder) {
+                return res.status(400).json({ error: "You have already purchased from this drop. Each buyer can only buy 1 product per release." });
+            }
         }
 
         let totalPrice;
@@ -73,6 +89,15 @@ const placeOrder = async (req, res) => {
             const Offer = require("../models/offer.model");
             await Offer.findByIdAndDelete(offerId);
         }
+
+        // Send notification to seller
+        await createNotification({
+            userId: product.seller,
+            type: "order",
+            title: "📦 New Order Received!",
+            message: `You have a new order for "${product.title}" (Qty: ${quantity}).`,
+            data: { orderId: order._id.toString(), role: "seller" },
+        });
 
         // Populate for response
         await order.populate("product", "title images price");
@@ -176,8 +201,8 @@ const updateOrderStatus = async (req, res) => {
                 error: `Cannot change status from "${order.status}" to "${status}"`,
             });
         }
-
         order.status = status;
+        const { createNotification } = require("../services/notification.service");
 
         // If delivered, mark payment as paid and credit seller wallet
         if (status === "delivered" && order.paymentStatus !== "paid") {
@@ -196,6 +221,15 @@ const updateOrderStatus = async (req, res) => {
                     originalSeller.wallet.totalEarned += royaltyAmount;
                     await originalSeller.save();
                     await settlePendingBalance(product.originalSeller, royaltyAmount, order._id, "royalty");
+
+                    // Notify original seller of royalty earnings
+                    await createNotification({
+                        userId: product.originalSeller,
+                        type: "royalty",
+                        title: "💸 Royalty Earned!",
+                        message: `You earned a royalty of ₹${royaltyAmount} on "${product.title}" resale!`,
+                        data: { orderId: order._id.toString(), productId: product._id.toString() },
+                    });
                 }
 
                 // 2. Pay current seller (remaining sale share)
@@ -205,6 +239,15 @@ const updateOrderStatus = async (req, res) => {
                     currentSeller.wallet.totalEarned += sellerShare;
                     await currentSeller.save();
                     await settlePendingBalance(order.seller, sellerShare, order._id, "sale");
+
+                    // Notify current seller of payout release
+                    await createNotification({
+                        userId: order.seller,
+                        type: "order",
+                        title: "💰 Payment Released",
+                        message: `Payout of ₹${sellerShare} for "${product.title}" has been released to your balance.`,
+                        data: { orderId: order._id.toString(), role: "seller" },
+                    });
                 }
             } else {
                 // Normal product - full payout to seller
@@ -214,8 +257,49 @@ const updateOrderStatus = async (req, res) => {
                     seller.wallet.totalEarned += order.totalPrice;
                     await seller.save();
                     await settlePendingBalance(order.seller, order.totalPrice, order._id, "sale");
+
+                    // Notify seller
+                    await createNotification({
+                        userId: order.seller,
+                        type: "order",
+                        title: "💰 Payment Released",
+                        message: `Payout of ₹${order.totalPrice} for "${product ? product.title : 'product'}" has been released.`,
+                        data: { orderId: order._id.toString(), role: "seller" },
+                    });
                 }
             }
+
+            // Notify buyer that order is delivered
+            await createNotification({
+                userId: order.buyer,
+                type: "order",
+                title: "🎉 Order Delivered!",
+                message: `Your order for "${product ? product.title : 'product'}" has been successfully delivered!`,
+                data: { orderId: order._id.toString(), role: "buyer" },
+            });
+        } else {
+            // Send standard status update notification to the buyer
+            let title = "📦 Order Status Update";
+            let message = `Your order status has been updated to "${status}".`;
+
+            if (status === "confirmed") {
+                title = "✅ Order Confirmed";
+                message = "The seller has confirmed your order and is preparing to ship it.";
+            } else if (status === "shipped") {
+                title = "🚚 Order Shipped";
+                message = "Good news! Your order has been shipped and is on its way.";
+            } else if (status === "cancelled") {
+                title = "❌ Order Cancelled";
+                message = "Your order has been cancelled.";
+            }
+
+            await createNotification({
+                userId: order.buyer,
+                type: "order",
+                title,
+                message,
+                data: { orderId: order._id.toString(), role: "buyer" },
+            });
         }
 
         // If cancelled, restore stock
@@ -286,9 +370,8 @@ const reSnitch = async (req, res) => {
 
         const originalProduct = order.product;
 
-        // Create a new listing re-snitched from original
         const newProduct = await Product.create({
-            title: `[Re-Snitch] ${originalProduct.title}`,
+            title: originalProduct.title,
             description: description || originalProduct.description,
             seller: req.user._id,
             price: { amount: price, currency: "INR" },

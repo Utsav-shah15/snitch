@@ -36,6 +36,14 @@ const orderSchema = new mongoose.Schema({
         enum: ["pending", "paid"],
         default: "pending",
     },
+    razorpayOrderId: {
+        type: String,
+        default: null,
+    },
+    razorpayPaymentId: {
+        type: String,
+        default: null,
+    },
     shippingAddress: {
         street: { type: String, required: true },
         city: { type: String, required: true },

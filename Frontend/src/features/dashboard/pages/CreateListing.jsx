@@ -3,8 +3,7 @@ import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import useProducts from '../../products/hooks/useProducts';
 import DashboardSidebar from '../components/DashboardSidebar';
-import useGenerateDescription from '../../ai/hooks/useGenerateDescription';
-import useSuggestPrice from '../../ai/hooks/useSuggestPrice';
+import { generateDescription, suggestPrice } from '../../ai/services/ai.service';
 
 const CATEGORIES = ['Tops', 'Bottoms', 'Footwear', 'Accessories'];
 const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Free Size'];
@@ -25,9 +24,9 @@ const CreateListing = () => {
         title: '',
         description: '',
         amount: '',
-        category: '',
-        size: '',
-        condition: '',
+        category: 'Tops',
+        size: 'M',
+        condition: 'New',
         stock: '1',
         status: 'active',
     });
@@ -37,61 +36,50 @@ const CreateListing = () => {
     const [submitError, setSubmitError] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    // AI Hooks
-    const { description: aiDescription, loading: aiDescLoading, error: aiDescError, generate: generateDesc, clear: clearDescError } = useGenerateDescription();
-    const { suggestion: aiPriceSuggestion, loading: aiPriceLoading, error: aiPriceError, suggest: suggestPriceAi, clear: clearPriceError } = useSuggestPrice();
-
-    // Helpers to identify missing fields for AI assistance
-    const getMissingDescFields = () => {
-        const missing = [];
-        if (!fields.title.trim()) missing.push('Title');
-        if (!fields.category) missing.push('Category');
-        if (!fields.condition) missing.push('Condition');
-        return missing.length > 0 ? `(Requires ${missing.join(', ')})` : null;
-    };
-
-    const getMissingPriceFields = () => {
-        const missing = [];
-        if (!fields.category) missing.push('Category');
-        if (!fields.condition) missing.push('Condition');
-        if (!fields.size) missing.push('Size');
-        return missing.length > 0 ? `(Requires ${missing.join(', ')})` : null;
-    };
+    // AI States
+    const [aiDescLoading, setAiDescLoading] = useState(false);
+    const [aiPriceLoading, setAiPriceLoading] = useState(false);
 
     const handleAiDescription = async () => {
-        if (!fields.title.trim() || !fields.category || !fields.condition) {
-            setSubmitError('Please fill Title, Category, and Condition first to generate description.');
+        if (!fields.title.trim()) {
+            setSubmitError('Enter a product title first so AI can generate a description.');
             return;
         }
+        setAiDescLoading(true);
         setSubmitError('');
-        const result = await generateDesc({
-            title: fields.title,
-            category: fields.category,
-            condition: fields.condition,
-        });
-        if (result?.description) {
-            setFields((prev) => ({ ...prev, description: result.description }));
-        } else if (aiDescError) {
-            setSubmitError(aiDescError);
+        try {
+            const data = await generateDescription({
+                title: fields.title,
+                category: fields.category,
+                condition: fields.condition,
+            });
+            setFields((prev) => ({ ...prev, description: data.description }));
+        } catch (err) {
+            setSubmitError(err.response?.data?.error || err.message || 'Failed to generate description.');
+        } finally {
+            setAiDescLoading(false);
         }
     };
 
     const handleAiPrice = async () => {
-        if (!fields.category || !fields.condition || !fields.size) {
-            setSubmitError('Please select Category, Condition, and Size first.');
+        if (!fields.category) {
+            setSubmitError('Select a category first.');
             return;
         }
+        setAiPriceLoading(true);
         setSubmitError('');
-        const result = await suggestPriceAi({
-            title: fields.title,
-            category: fields.category,
-            condition: fields.condition,
-            size: fields.size,
-        });
-        if (result?.suggestedPrice) {
-            setFields((prev) => ({ ...prev, amount: result.suggestedPrice.toString() }));
-        } else if (aiPriceError) {
-            setSubmitError(aiPriceError);
+        try {
+            const data = await suggestPrice({
+                title: fields.title,
+                category: fields.category,
+                condition: fields.condition,
+                size: fields.size,
+            });
+            setFields((prev) => ({ ...prev, amount: data.suggestedPrice.toString() }));
+        } catch (err) {
+            setSubmitError(err.response?.data?.error || err.message || 'Failed to suggest price.');
+        } finally {
+            setAiPriceLoading(false);
         }
     };
 
@@ -193,18 +181,6 @@ const CreateListing = () => {
             setSubmitError('Price must be greater than 0.');
             return;
         }
-        if (!fields.category) {
-            setSubmitError('Please select a Category.');
-            return;
-        }
-        if (!fields.size) {
-            setSubmitError('Please select a Size.');
-            return;
-        }
-        if (!fields.condition) {
-            setSubmitError('Please select a Condition.');
-            return;
-        }
         if (!isEditMode && selectedFiles.length === 0) {
             setSubmitError('At least one product image is required.');
             return;
@@ -284,19 +260,18 @@ const CreateListing = () => {
                                 <div className="flex items-center justify-between mb-1.5">
                                     <label className="text-[10px] font-semibold tracking-wider text-neutral-400 uppercase">Description</label>
                                     <div className="flex items-center gap-2">
-                                        {getMissingDescFields() && (
-                                            <span className="text-[8px] text-neutral-600 font-bold uppercase tracking-wider">{getMissingDescFields()}</span>
+                                        {!fields.title.trim() && (
+                                            <span className="text-[8px] text-neutral-600 font-bold uppercase tracking-wider">(Requires Title)</span>
                                         )}
                                         <button
                                             type="button"
                                             onClick={handleAiDescription}
-                                            disabled={aiDescLoading || !!getMissingDescFields()}
-                                            className={`flex items-center gap-1.5 text-[10px] font-bold tracking-wider px-3 py-1 rounded-full border transition-all cursor-pointer ${
-                                                getMissingDescFields()
-                                                    ? 'border-neutral-800 text-neutral-600 cursor-not-allowed'
-                                                    : 'border-violet-800/50 text-violet-400 hover:bg-violet-950/30'
-                                            }`}
-                                            title={getMissingDescFields() ? `Please enter/select: ${getMissingDescFields()}` : "Generate AI Description"}
+                                            disabled={aiDescLoading || !fields.title.trim()}
+                                            className={`flex items-center gap-1.5 text-[10px] font-bold tracking-wider px-3 py-1 rounded-full border transition-all cursor-pointer ${!fields.title.trim()
+                                                ? 'border-neutral-800 text-neutral-600 cursor-not-allowed'
+                                                : 'border-violet-800/50 text-violet-400 hover:bg-violet-950/30'
+                                                }`}
+                                            title={!fields.title.trim() ? "Please fill the Product Title first" : "Generate AI Description"}
                                         >
                                             {aiDescLoading ? (
                                                 <div className="w-3 h-3 border-2 border-violet-600/30 border-t-violet-500 rounded-full animate-spin" />
@@ -325,19 +300,18 @@ const CreateListing = () => {
                                     <div className="flex items-center justify-between mb-1.5">
                                         <label className="text-[10px] font-semibold tracking-wider text-neutral-400 uppercase">Price (INR)</label>
                                         <div className="flex items-center gap-1.5">
-                                            {getMissingPriceFields() && (
-                                                <span className="text-[8px] text-neutral-600 font-bold uppercase tracking-wider">{getMissingPriceFields()}</span>
+                                            {!fields.category && (
+                                                <span className="text-[8px] text-neutral-600 font-bold uppercase tracking-wider">(Requires Category)</span>
                                             )}
                                             <button
                                                 type="button"
                                                 onClick={handleAiPrice}
-                                                disabled={aiPriceLoading || !!getMissingPriceFields()}
-                                                className={`flex items-center gap-1 text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded-full border transition-all cursor-pointer ${
-                                                    getMissingPriceFields()
-                                                        ? 'border-neutral-800 text-neutral-600 cursor-not-allowed'
-                                                        : 'border-emerald-800/50 text-emerald-400 hover:bg-emerald-950/30'
-                                                }`}
-                                                title={getMissingPriceFields() ? `Please enter/select: ${getMissingPriceFields()}` : "Suggest AI Price"}
+                                                disabled={aiPriceLoading || !fields.category}
+                                                className={`flex items-center gap-1 text-[10px] font-bold tracking-wider px-2.5 py-0.5 rounded-full border transition-all cursor-pointer ${!fields.category
+                                                    ? 'border-neutral-800 text-neutral-600 cursor-not-allowed'
+                                                    : 'border-emerald-800/50 text-emerald-400 hover:bg-emerald-950/30'
+                                                    }`}
+                                                title={!fields.category ? "Please select a Category first" : "Suggest AI Price"}
                                             >
                                                 {aiPriceLoading ? (
                                                     <div className="w-3 h-3 border-2 border-emerald-600/30 border-t-emerald-500 rounded-full animate-spin" />
@@ -365,7 +339,6 @@ const CreateListing = () => {
                                         onChange={handleInputChange}
                                         className="w-full bg-[#1c1c1c] border border-neutral-800 px-4 py-3.5 text-sm text-white outline-none focus:border-neutral-500 transition-colors cursor-pointer"
                                     >
-                                        <option value="">Select Category</option>
                                         {CATEGORIES.map((cat) => (
                                             <option key={cat} value={cat}>{cat}</option>
                                         ))}
@@ -381,7 +354,6 @@ const CreateListing = () => {
                                         onChange={handleInputChange}
                                         className="w-full bg-[#1c1c1c] border border-neutral-800 px-4 py-3.5 text-sm text-white outline-none focus:border-neutral-500 transition-colors cursor-pointer"
                                     >
-                                        <option value="">Select Size</option>
                                         {SIZES.map((size) => (
                                             <option key={size} value={size}>{size}</option>
                                         ))}
@@ -399,7 +371,6 @@ const CreateListing = () => {
                                         onChange={handleInputChange}
                                         className="w-full bg-[#1c1c1c] border border-neutral-800 px-4 py-3.5 text-sm text-white outline-none focus:border-neutral-500 transition-colors cursor-pointer"
                                     >
-                                        <option value="">Select Condition</option>
                                         {CONDITIONS.map((cond) => (
                                             <option key={cond} value={cond}>{cond}</option>
                                         ))}

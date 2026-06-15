@@ -1,27 +1,4 @@
-# Dependencies
-node_modules/
-jspm_packages/
-web_modules/
-
-# Local env files (highly critical to ignore secrets)
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.env
-Backend/.env
-Frontend/.env
-
-# Build outputs
-dist/
-build/
-.next/
-out/
-.nuxt/
-.cache/
-
-# Debug and Logs
+# Logs
 logs
 *.log
 npm-debug.log*
@@ -30,29 +7,24 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-# Editor / IDE configuration
-.vscode/
+node_modules
+dist
+dist-ssr
+*.local
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Editor directories and files
+.vscode/*
 !.vscode/extensions.json
-.idea/
+.idea
+.DS_Store
 *.suo
 *.ntvs*
 *.njsproj
 *.sln
 *.sw?
-.project
-.classpath
-.settings/
-
-# OS files
-.DS_Store
-Thumbs.db
-
-# Testing
-coverage/
-.nyc_output/
-
-# Temporary / Cache
-.npm/
-.eslintcache
-.parcel-cache/
-.turbo/

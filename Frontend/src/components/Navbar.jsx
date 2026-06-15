@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import { useAuth } from '../features/auth/hooks/useAuth';
+import NotificationBell from '../features/notifications/components/NotificationBell';
 
 const Navbar = () => {
     const { user } = useSelector((state) => state.auth);
@@ -32,6 +33,9 @@ const Navbar = () => {
                         <Link to="/browse" className="text-[11px] font-semibold tracking-[0.2em] text-neutral-400 hover:text-white uppercase transition-colors">
                             Browse
                         </Link>
+                        <Link to="/drops" className="text-[11px] font-semibold tracking-[0.2em] text-neutral-400 hover:text-white uppercase transition-colors">
+                            Drops
+                        </Link>
                         {user?.isSeller && (
                             <Link to="/dashboard" className="text-[11px] font-semibold tracking-[0.2em] text-neutral-400 hover:text-white uppercase transition-colors">
                                 Dashboard
@@ -54,6 +58,9 @@ const Navbar = () => {
                                         </span>
                                     )}
                                 </Link>
+
+                                {/* Notifications */}
+                                <NotificationBell />
 
                                 {/* Profile dropdown */}
                                 <div className="relative">

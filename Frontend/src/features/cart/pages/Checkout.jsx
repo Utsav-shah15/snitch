@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { clearCart } from '../cartSlice';
-import { placeOrder } from '../../orders/services/order.service';
 import { getProductById } from '../../products/services/product.service';
 import { getOfferById } from '../../offers/services/offer.service';
+import usePayment from '../../orders/hooks/usePayment';
 
 const Checkout = () => {
     const { items } = useSelector((state) => state.cart);
@@ -25,9 +25,10 @@ const Checkout = () => {
 
     const [address, setAddress] = useState({ street: '', city: '', state: '', pincode: '' });
     const [errors, setErrors] = useState({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
     const [orderError, setOrderError] = useState('');
-    const [success, setSuccess] = useState(false);
+
+    // Load usePayment hook
+    const { processPayment, loading: paymentLoading, error: paymentError, success: paymentSuccess } = usePayment();
 
     // Fetch direct purchase product/offer details
     useEffect(() => {
@@ -54,10 +55,22 @@ const Checkout = () => {
         loadDirectCheckoutData();
     }, [productIdParam, offerIdParam]);
 
+    // Navigate to orders page upon payment success
+    useEffect(() => {
+        if (paymentSuccess) {
+            // Only clear cart if checkout was initiated from Cart
+            if (!productIdParam) {
+                dispatch(clearCart());
+            }
+            const timer = setTimeout(() => navigate('/orders'), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [paymentSuccess, productIdParam, dispatch, navigate]);
+
     if (!user) return <Navigate to="/login" replace />;
 
     // Redirect to cart ONLY if there is no direct product purchase and cart is empty
-    if (!productIdParam && items.length === 0 && !success) {
+    if (!productIdParam && items.length === 0 && !paymentSuccess) {
         return <Navigate to="/cart" replace />;
     }
 
@@ -118,54 +131,33 @@ const Checkout = () => {
 
     const handlePlaceOrder = async () => {
         if (!validate()) return;
-        setIsSubmitting(true);
         setOrderError('');
 
         try {
-            // Place order for each item in the checkout list
+            // Process payment for each checkout item sequentially
             for (const item of checkoutItems) {
-                const orderPayload = {
-                    productId: item._id,
-                    quantity: item.quantity,
-                    shippingAddress: {
-                        street: address.street.trim(),
-                        city: address.city.trim(),
-                        state: address.state.trim(),
-                        pincode: address.pincode.trim(),
-                    },
-                };
-
-                // Inject offer ID if this is a negotiated offer direct purchase
-                if (productIdParam && offerIdParam) {
-                    orderPayload.offerId = offerIdParam;
-                }
-
-                await placeOrder(orderPayload);
+                await processPayment({
+                    item,
+                    address,
+                    user,
+                    offerId: (productIdParam && offerIdParam) ? offerIdParam : undefined,
+                });
             }
-
-            // Only clear cart if checkout was initiated from Cart
-            if (!productIdParam) {
-                dispatch(clearCart());
-            }
-
-            setSuccess(true);
-            setTimeout(() => navigate('/orders'), 3000);
         } catch (err) {
-            setOrderError(err.response?.data?.error || 'Failed to place order. Please try again.');
-        } finally {
-            setIsSubmitting(false);
+            setOrderError(err.message || 'Payment or order creation failed.');
         }
     };
 
-    if (success) {
+    if (paymentSuccess) {
         return (
             <div className="max-w-md mx-auto px-4 py-20 text-center text-white">
-                <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center text-black mx-auto mb-6">
+                <div className="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center text-white mx-auto mb-6 shadow-lg shadow-emerald-500/20">
                     <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                     </svg>
                 </div>
-                <h2 className="font-serif text-3xl tracking-widest uppercase mb-2">Order Placed!</h2>
+                <h2 className="font-serif text-3xl tracking-widest uppercase mb-2">Payment Successful!</h2>
+                <p className="text-neutral-500 text-xs mt-2">Your order has been confirmed and payment received.</p>
                 <p className="text-neutral-400 text-xs tracking-widest uppercase animate-pulse mt-4">
                     Redirecting to orders...
                 </p>
@@ -182,9 +174,9 @@ const Checkout = () => {
                 <div className="lg:col-span-2">
                     <h2 className="text-[10px] font-bold tracking-[0.2em] text-neutral-500 uppercase mb-4">Shipping Address</h2>
 
-                    {orderError && (
+                    {(orderError || paymentError) && (
                         <div className="bg-red-950/50 border border-red-900/50 p-3 text-xs text-red-400 mb-4">
-                            {orderError}
+                            {orderError || paymentError}
                         </div>
                     )}
 
@@ -258,17 +250,25 @@ const Checkout = () => {
                         </div>
                     </div>
 
-                    <button onClick={handlePlaceOrder} disabled={isSubmitting || checkoutItems.length === 0}
-                        className="w-full bg-white text-black text-xs font-bold tracking-[0.2em] py-3.5 hover:bg-neutral-200 transition-colors uppercase cursor-pointer disabled:bg-neutral-700 disabled:text-neutral-400 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                        {isSubmitting ? (
+                    {/* Razorpay secured badge */}
+                    <div className="flex items-center gap-2 mb-4 p-2 bg-violet-950/20 border border-violet-500/10 rounded-lg">
+                        <svg className="w-4 h-4 text-violet-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                        </svg>
+                        <span className="text-[9px] text-violet-400 font-semibold">Secured by Razorpay</span>
+                    </div>
+
+                    <button onClick={handlePlaceOrder} disabled={paymentLoading || checkoutItems.length === 0}
+                        className="w-full bg-violet-600 hover:bg-violet-500 text-white text-xs font-bold tracking-[0.2em] py-3.5 transition-colors uppercase cursor-pointer disabled:bg-neutral-700 disabled:text-neutral-400 disabled:cursor-not-allowed flex items-center justify-center gap-2 rounded-lg shadow-lg shadow-violet-950/20">
+                        {paymentLoading ? (
                             <>
                                 <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
                                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                                 </svg>
-                                Placing Order...
+                                Processing Payment...
                             </>
-                        ) : 'Place Order'}
+                        ) : `Pay ₹${total.toLocaleString()}`}
                     </button>
                 </div>
             </div>

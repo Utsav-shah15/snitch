@@ -12,6 +12,9 @@ const walletRoutes=require("./routes/wallet.routes");
 const offerRoutes=require("./routes/offer.routes");
 const analyticsRoutes=require("./routes/analytics.routes");
 const aiRoutes=require("./routes/ai.routes");
+const dropRoutes=require("./routes/drop.routes");
+const notificationRoutes=require("./routes/notification.routes");
+const paymentRoutes=require("./routes/payment.routes");
 
 app.use(
   cors({
@@ -26,7 +29,7 @@ app.use(cookieParser());
 app.use(morgan("dev"));
 
 const path = require("path");
-app.use("/uploads", express.static(path.join(process.cwd(), "public/uploads")));
+const _dirname = path.resolve();
 
 app.use("/api/auth", authRoutes);
 app.use("/auth", authRoutes);
@@ -36,6 +39,14 @@ app.use("/api/wallet", walletRoutes);
 app.use("/api/offers", offerRoutes);
 app.use("/api/analytics", analyticsRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/drops", dropRoutes);
+app.use("/api/notifications", notificationRoutes);
+app.use("/api/payment", paymentRoutes);
+
+app.use(express.static(path.join(_dirname, "/Frontend/dist")));
+app.get((req, res) => {
+    res.sendFile(path.resolve(_dirname, "Frontend", "dist", "index.html"));
+})
 
 module.exports=app;
 
