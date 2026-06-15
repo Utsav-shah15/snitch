@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-    baseURL: 'http://localhost:3000/api/wallet',
+    baseURL: 'https://snitch-c04s.onrender.com/api/wallet',
     withCredentials: true,
 });
 

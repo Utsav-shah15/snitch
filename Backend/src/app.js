@@ -18,7 +18,7 @@ const paymentRoutes=require("./routes/payment.routes");
 
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"],
+    origin: "https://snitch-c04s.onrender.com/",
     credentials: true,
   })
 );
