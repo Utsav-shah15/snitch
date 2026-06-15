@@ -380,7 +380,7 @@ const Register = () => {
         {/* Google OAuth Button */}
         <button
           type="button"
-          onClick={() => window.location.href = 'http://localhost:3000/api/auth/google'}
+          onClick={() => window.location.href = '/api/auth/google'}
           className="w-full border border-neutral-800 bg-transparent py-3.5 flex items-center justify-center gap-2.5 text-[11px] font-bold tracking-[0.2em] hover:bg-[#1c1c1c] transition-all duration-300 text-white uppercase cursor-pointer"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
